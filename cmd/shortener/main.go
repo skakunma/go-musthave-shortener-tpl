@@ -47,7 +47,6 @@ func AddIddres(res http.ResponseWriter, req *http.Request) {
 		}
 		Link := AddLink(string(body))
 		res.WriteHeader(http.StatusCreated) // Correct status code
-		fmt.Println("None")
 		fmt.Fprintln(res, Link)
 	}
 
