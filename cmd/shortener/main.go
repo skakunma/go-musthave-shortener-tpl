@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
@@ -47,7 +46,7 @@ func AddIddres(res http.ResponseWriter, req *http.Request) {
 		}
 		Link := AddLink(string(body))
 		res.WriteHeader(http.StatusCreated) // Correct status code
-		fmt.Fprintln(res, Link)
+		res.Write([]byte(Link))
 	}
 
 	if req.Method == http.MethodGet {
@@ -58,7 +57,6 @@ func AddIddres(res http.ResponseWriter, req *http.Request) {
 			http.Redirect(res, req, link, http.StatusTemporaryRedirect)
 		} else {
 			res.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintln(res, "Invalid link")
 		}
 	}
 }
