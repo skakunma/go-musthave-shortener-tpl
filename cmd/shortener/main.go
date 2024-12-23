@@ -20,6 +20,7 @@ func generateLink() string {
 	}
 	return result
 }
+
 func AddLink(Link string) string {
 	for {
 		randomLink := generateLink()
@@ -29,12 +30,14 @@ func AddLink(Link string) string {
 		}
 	}
 }
+
 func GetLink(key string) (string, bool) {
 	if value, exist := Links[key]; exist {
 		return value, true
 	}
 	return "", false
 }
+
 func AddIddres(res http.ResponseWriter, req *http.Request) {
 	if req.Method == http.MethodPost && req.Header.Get("Content-Type") == "text/plain" {
 		body, err := io.ReadAll(req.Body)
@@ -42,25 +45,22 @@ func AddIddres(res http.ResponseWriter, req *http.Request) {
 			res.WriteHeader(http.StatusBadRequest)
 			panic(err)
 		}
-		fmt.Println(string(body))
 		Link := AddLink(string(body))
-		res.WriteHeader(http.StatusCreated)
+		res.WriteHeader(http.StatusCreated) // Correct status code
 		fmt.Fprintln(res, Link)
 	}
+
 	if req.Method == http.MethodGet {
 		path := strings.Trim(req.URL.Path, "/")
-		fmt.Println(path)
 		link, isTrue := GetLink(path)
 		if isTrue {
-			res.Header().Set("Location", link)
-			fmt.Println(res.Header().Get("Location"))
+			// Automatically sets the Location header and performs the redirect
 			http.Redirect(res, req, link, http.StatusTemporaryRedirect)
 		} else {
 			res.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintln(res, nil)
+			fmt.Fprintln(res, "Invalid link")
 		}
 	}
-
 }
 
 func main() {
