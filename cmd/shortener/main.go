@@ -39,7 +39,7 @@ func GetLink(key string) (string, bool) {
 }
 
 func AddIddres(res http.ResponseWriter, req *http.Request) {
-	if req.Method == http.MethodPost && req.Header.Get("Content-Type") == "text/plain" {
+	if req.Method == http.MethodPost && strings.HasPrefix(req.Header.Get("Content-Type"), "text/plain") {
 		body, err := io.ReadAll(req.Body)
 		if err != nil {
 			res.WriteHeader(http.StatusBadRequest)
@@ -47,6 +47,7 @@ func AddIddres(res http.ResponseWriter, req *http.Request) {
 		}
 		Link := AddLink(string(body))
 		res.WriteHeader(http.StatusCreated) // Correct status code
+		fmt.Println("None")
 		fmt.Fprintln(res, Link)
 	}
 
