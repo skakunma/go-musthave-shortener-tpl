@@ -14,7 +14,7 @@ var charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 func generateLink() string {
 	result := ""
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 7; i++ {
 		indx := rand.Intn(51)
 		result += string(charset[indx])
 	}
@@ -66,7 +66,7 @@ func AddIddres(res http.ResponseWriter, req *http.Request) {
 func main() {
 	mx := http.NewServeMux()
 	mx.HandleFunc("/", AddIddres)
-	if err := http.ListenAndServe(":8000", mx); err != nil {
+	if err := http.ListenAndServe(":8080", mx); err != nil {
 		panic(err)
 	}
 }
