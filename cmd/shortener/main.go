@@ -37,15 +37,30 @@ func GetLink(key string) (string, bool) {
 	return "", false
 }
 
-func AddIddres(res http.ResponseWriter, req *http.Request) {
+func Iddres(res http.ResponseWriter, req *http.Request) {
+	// Проверяем, что это POST-запрос и Content-Type - text/plain
 	if req.Method == http.MethodPost && strings.HasPrefix(req.Header.Get("Content-Type"), "text/plain") {
+		// Чтение тела запроса
 		body, err := io.ReadAll(req.Body)
-		if err != nil {
-			res.WriteHeader(http.StatusBadRequest)
-			panic(err)
+		defer req.Body.Close() // Обязательно закрыть тело запроса после чтения
+
+		// Проверка на ошибку при чтении или если тело пустое (пустой массив JSON)
+		if err != nil || len(body) == 0 {
+			http.Error(res, "Failed to read request body", http.StatusBadRequest)
+			return
 		}
+
+		// Если тело содержит пустой массив JSON "[]", также возвращаем ошибку
+		if string(body) == "[]" {
+			http.Error(res, "Empty array is not allowed", http.StatusBadRequest)
+			return
+		}
+
+		// Генерация новой ссылки
 		Link := AddLink(string(body))
-		res.WriteHeader(http.StatusCreated) // Correct status code
+
+		// Отправка ответа
+		res.WriteHeader(http.StatusCreated)
 		res.Write([]byte(Link))
 	}
 
@@ -63,7 +78,7 @@ func AddIddres(res http.ResponseWriter, req *http.Request) {
 
 func main() {
 	mx := http.NewServeMux()
-	mx.HandleFunc("/", AddIddres)
+	mx.HandleFunc("/", Iddres)
 	if err := http.ListenAndServe(":8080", mx); err != nil {
 		panic(err)
 	}
