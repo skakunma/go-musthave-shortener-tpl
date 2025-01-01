@@ -71,7 +71,7 @@ func TestPostIddres(t *testing.T) {
 					t.Errorf("Expected response body '%s', but got '%s'", test.want.Response, response)
 				}
 			} else {
-				match, _ := regexp.MatchString(`^"http://localhost:8080/[a-zA-Z]{7}"$`, response)
+				match, _ := regexp.MatchString(`^http://localhost:8080/[a-zA-Z]{7}$`, response)
 				if !match {
 					t.Errorf("Expected response URL format to match '^http://localhost:8080/[a-zA-Z]{7}$', but got '%s'", response)
 				}
@@ -94,7 +94,7 @@ func TestGetIddres(t *testing.T) {
 	// Проверяем, что ссылка была успешно создана
 	createdLink := postRecorder.Body.String()
 	// Теперь выполняем GET-запрос по этой ссылке
-	getReq := httptest.NewRequest(http.MethodGet, "/"+createdLink[len(`http://localhost:8080/"`):len(createdLink)-1], nil)
+	getReq := httptest.NewRequest(http.MethodGet, "/"+createdLink[len(`http://localhost:8080/`):], nil)
 	getRecorder := httptest.NewRecorder()
 	r.ServeHTTP(getRecorder, getReq)
 

@@ -72,7 +72,7 @@ func AddIddres(c *gin.Context) {
 		Link := AddLink(string(body))
 
 		// Отправка ответа
-		c.JSON(http.StatusCreated, Link)
+		c.String(http.StatusCreated, Link)
 	}
 }
 
