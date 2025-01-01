@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/gin-gonic/gin"
 	"io"
 	"math/rand"
 	"net/http"
@@ -37,22 +38,33 @@ func GetLink(key string) (string, bool) {
 	return "", false
 }
 
-func Iddres(res http.ResponseWriter, req *http.Request) {
+func GetIddres(c *gin.Context) {
 	// Проверяем, что это POST-запрос и Content-Type - text/plain
-	if req.Method == http.MethodPost && strings.HasPrefix(req.Header.Get("Content-Type"), "text/plain") {
+	path := c.Param("key")
+	link, isTrue := GetLink(path)
+	if isTrue {
+		// Automatically sets the Location header and performs the redirect
+		c.Redirect(http.StatusTemporaryRedirect, link)
+	} else {
+		c.JSON(http.StatusBadRequest, nil)
+	}
+}
+
+func AddIddres(c *gin.Context) {
+	if strings.HasPrefix(c.Request.Header.Get("Content-Type"), "text/plain") {
 		// Чтение тела запроса
-		body, err := io.ReadAll(req.Body)
-		defer req.Body.Close()
+		body, err := io.ReadAll(c.Request.Body)
+		defer c.Request.Body.Close()
 
 		// Проверка на ошибку при чтении или если тело пустое (пустой массив JSON)
 		if err != nil || len(body) == 0 {
-			http.Error(res, "Failed to read request body", http.StatusBadRequest)
+			c.JSON(http.StatusBadRequest, "Failed to read request body")
 			return
 		}
 
 		// Если тело содержит пустой массив JSON "[]", также возвращаем ошибку
 		if string(body) == "[]" {
-			http.Error(res, "Empty array is not allowed", http.StatusBadRequest)
+			c.JSON(http.StatusBadRequest, "Empty array is not allowed")
 			return
 		}
 
@@ -60,26 +72,13 @@ func Iddres(res http.ResponseWriter, req *http.Request) {
 		Link := AddLink(string(body))
 
 		// Отправка ответа
-		res.WriteHeader(http.StatusCreated)
-		res.Write([]byte(Link))
-	}
-
-	if req.Method == http.MethodGet {
-		path := strings.Trim(req.URL.Path, "/")
-		link, isTrue := GetLink(path)
-		if isTrue {
-			// Automatically sets the Location header and performs the redirect
-			http.Redirect(res, req, link, http.StatusTemporaryRedirect)
-		} else {
-			res.WriteHeader(http.StatusBadRequest)
-		}
+		c.JSON(http.StatusCreated, Link)
 	}
 }
 
 func main() {
-	mx := http.NewServeMux()
-	mx.HandleFunc("/", Iddres)
-	if err := http.ListenAndServe(":8080", mx); err != nil {
-		panic(err)
-	}
+	server := gin.Default()
+	server.POST("/", AddIddres)
+	server.GET("/:key", GetIddres)
+	server.Run(":8080")
 }
