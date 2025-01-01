@@ -42,7 +42,7 @@ func Iddres(res http.ResponseWriter, req *http.Request) {
 	if req.Method == http.MethodPost && strings.HasPrefix(req.Header.Get("Content-Type"), "text/plain") {
 		// Чтение тела запроса
 		body, err := io.ReadAll(req.Body)
-		defer req.Body.Close() // Обязательно закрыть тело запроса после чтения
+		defer req.Body.Close()
 
 		// Проверка на ошибку при чтении или если тело пустое (пустой массив JSON)
 		if err != nil || len(body) == 0 {
