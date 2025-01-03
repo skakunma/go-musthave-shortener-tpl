@@ -26,7 +26,10 @@ func AddLink(Link string) string {
 		randomLink := generateLink()
 		if _, exist := Links[randomLink]; !exist {
 			Links[randomLink] = Link
-			return flagBaseURL + "/" + randomLink
+			if flagBaseURL == "" {
+				flagBaseURL = "http://localhost:8080/"
+			}
+			return flagBaseURL + randomLink
 		}
 	}
 }
