@@ -29,6 +29,10 @@ func AddLink(Link string) string {
 			if flagBaseURL == "" {
 				flagBaseURL = "http://localhost:8080/"
 			}
+
+			if flagBaseURL[len(flagBaseURL)-1:] != "/" {
+				flagBaseURL += "/"
+			}
 			return flagBaseURL + randomLink
 		}
 	}
