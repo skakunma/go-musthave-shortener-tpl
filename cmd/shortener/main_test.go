@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"regexp"
 	"testing"
+
+	"github.com/gin-gonic/gin"
 )
 
 func TestPostIddres(t *testing.T) {
@@ -25,7 +27,7 @@ func TestPostIddres(t *testing.T) {
 				Code     int
 			}{
 				Code:     400,
-				Response: "Failed to read request body\n",
+				Response: `"Failed to read request body"`,
 			},
 			request: "",
 		},
@@ -42,6 +44,9 @@ func TestPostIddres(t *testing.T) {
 		},
 	}
 
+	r := gin.Default() // создаем новый Gin рутер
+	r.POST("/", AddIddres)
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			var req *http.Request
@@ -52,7 +57,7 @@ func TestPostIddres(t *testing.T) {
 			}
 			req.Header.Set("Content-Type", "text/plain")
 			w := httptest.NewRecorder()
-			Iddres(w, req)
+			r.ServeHTTP(w, req) // отправляем запрос через Gin рутер
 
 			// Проверка кода статуса
 			if w.Code != test.want.Code {
@@ -76,25 +81,27 @@ func TestPostIddres(t *testing.T) {
 }
 
 func TestGetIddres(t *testing.T) {
+	r := gin.Default()
+	r.GET("/:key", GetIddres) // Обработчик для GET-запросов
+	r.POST("/", AddIddres)
+
 	// Сначала создаем ссылку через POST-запрос
 	postReq := httptest.NewRequest(http.MethodPost, "/", io.NopCloser(io.Reader(bytes.NewBufferString("https://google.com"))))
 	postReq.Header.Set("Content-Type", "text/plain")
 	postRecorder := httptest.NewRecorder()
-	Iddres(postRecorder, postReq)
+	r.ServeHTTP(postRecorder, postReq)
 
 	// Проверяем, что ссылка была успешно создана
 	createdLink := postRecorder.Body.String()
-
 	// Теперь выполняем GET-запрос по этой ссылке
-	getReq := httptest.NewRequest(http.MethodGet, createdLink, nil)
+	getReq := httptest.NewRequest(http.MethodGet, "/"+createdLink[len(`http://localhost:8080/`):], nil)
 	getRecorder := httptest.NewRecorder()
-	Iddres(getRecorder, getReq)
+	r.ServeHTTP(getRecorder, getReq)
 
 	// Проверяем, что мы получили редирект
 	if getRecorder.Code != http.StatusTemporaryRedirect {
-		t.Errorf("Expected redirect status %d, but got %d", http.StatusTemporaryRedirect, getRecorder.Code)
+		t.Errorf("Expected status code %d, but got %d", http.StatusTemporaryRedirect, getRecorder.Code)
 	}
-
 	location := getRecorder.Header().Get("Location")
 	if location != "https://google.com" {
 		t.Errorf("Expected Location header to be 'https://google.com', but got '%s'", location)
@@ -102,10 +109,13 @@ func TestGetIddres(t *testing.T) {
 }
 
 func TestGetIddresNotFound(t *testing.T) {
+	r := gin.Default()
+	r.GET("/:key", GetIddres)
+
 	// Выполняем GET-запрос для несуществующего ключа
 	getReq := httptest.NewRequest(http.MethodGet, "/nonexistentkey", nil)
 	getRecorder := httptest.NewRecorder()
-	Iddres(getRecorder, getReq)
+	r.ServeHTTP(getRecorder, getReq)
 
 	// Проверяем, что мы получили ошибку 400
 	if getRecorder.Code != http.StatusBadRequest {
