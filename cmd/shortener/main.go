@@ -26,7 +26,14 @@ func AddLink(Link string) string {
 		randomLink := generateLink()
 		if _, exist := Links[randomLink]; !exist {
 			Links[randomLink] = Link
-			return "http://localhost:8080/" + randomLink
+			if flagBaseURL == "" {
+				flagBaseURL = "http://localhost:8080/"
+			}
+
+			if flagBaseURL[len(flagBaseURL)-1:] != "/" {
+				flagBaseURL += "/"
+			}
+			return flagBaseURL + randomLink
 		}
 	}
 }
@@ -77,8 +84,9 @@ func AddIddres(c *gin.Context) {
 }
 
 func main() {
+	parseFlags()
 	server := gin.Default()
 	server.POST("/", AddIddres)
 	server.GET("/:key", GetIddres)
-	server.Run(":8080")
+	server.Run(flagRunAddr)
 }
