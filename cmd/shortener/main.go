@@ -5,34 +5,36 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"strings"
+	"sync"
 )
 
-var Links = make(map[string]string)
-
-var charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+var (
+	mu      sync.Mutex
+	Links   = make(map[string]string)
+	charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+)
 
 func generateLink() string {
-	result := ""
+	var builder strings.Builder
+	builder.Grow(7)
+
 	for i := 0; i < 7; i++ {
 		indx := rand.Intn(51)
-		result += string(charset[indx])
+		builder.WriteByte(charset[indx])
 	}
-	return result
-}
 
+	return builder.String()
+}
 func AddLink(Link string) string {
 	for {
 		randomLink := generateLink()
+		mu.Lock()
 		if _, exist := Links[randomLink]; !exist {
 			Links[randomLink] = Link
-			if flagBaseURL == "" {
-				flagBaseURL = "http://localhost:8080/"
-			}
+			mu.Unlock()
 
-			if flagBaseURL[len(flagBaseURL)-1:] != "/" {
-				flagBaseURL += "/"
-			}
 			return flagBaseURL + randomLink
 		}
 	}
@@ -53,7 +55,7 @@ func GetIddres(c *gin.Context) {
 		// Automatically sets the Location header and performs the redirect
 		c.Redirect(http.StatusTemporaryRedirect, link)
 	} else {
-		c.JSON(http.StatusBadRequest, nil)
+		c.JSON(http.StatusNotFound, nil)
 	}
 }
 
@@ -62,25 +64,30 @@ func AddIddres(c *gin.Context) {
 		// Чтение тела запроса
 		body, err := io.ReadAll(c.Request.Body)
 		defer c.Request.Body.Close()
+		input := string(body)
 
 		// Проверка на ошибку при чтении или если тело пустое (пустой массив JSON)
 		if err != nil || len(body) == 0 {
 			c.JSON(http.StatusBadRequest, "Failed to read request body")
 			return
 		}
-
-		// Если тело содержит пустой массив JSON "[]", также возвращаем ошибку
-		if string(body) == "[]" {
-			c.JSON(http.StatusBadRequest, "Empty array is not allowed")
+		parsedURL, err := url.ParseRequestURI(input)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid URL"})
 			return
 		}
 
+		// Если тело содержит пустой массив JSON "[]", также возвращаем ошибку
+
 		// Генерация новой ссылки
-		Link := AddLink(string(body))
+		link := AddLink(parsedURL.String())
 
 		// Отправка ответа
-		c.String(http.StatusCreated, Link)
+		c.String(http.StatusCreated, link)
+		return
 	}
+	c.JSON(http.StatusBadRequest, "Content-Type must be text/plain")
+	return
 }
 
 func main() {
