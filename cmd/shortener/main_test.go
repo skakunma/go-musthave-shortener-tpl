@@ -12,6 +12,7 @@ import (
 )
 
 func TestPostIddres(t *testing.T) {
+	flagBaseURL = "http://localhost:8080/"
 	tests := []struct {
 		name string
 		want struct {
@@ -118,7 +119,7 @@ func TestGetIddresNotFound(t *testing.T) {
 	r.ServeHTTP(getRecorder, getReq)
 
 	// Проверяем, что мы получили ошибку 400
-	if getRecorder.Code != http.StatusBadRequest {
+	if getRecorder.Code != http.StatusNotFound {
 		t.Errorf("Expected status code %d, but got %d", http.StatusBadRequest, getRecorder.Code)
 	}
 }
