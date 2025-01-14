@@ -14,13 +14,14 @@ var (
 	mu      sync.Mutex
 	Links   = make(map[string]string)
 	charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	charsetLength = 7
 )
 
 func generateLink() string {
 	var builder strings.Builder
-	builder.Grow(7)
+	builder.Grow(charsetLength)
 
-	for i := 0; i < 7; i++ {
+	for i := 0; i < charsetLength; i++ {
 		indx := rand.Intn(51)
 		builder.WriteByte(charset[indx])
 	}
@@ -60,33 +61,33 @@ func GetIddres(c *gin.Context) {
 }
 
 func AddIddres(c *gin.Context) {
-	if strings.HasPrefix(c.Request.Header.Get("Content-Type"), "text/plain") {
-		// Чтение тела запроса
-		body, err := io.ReadAll(c.Request.Body)
-		defer c.Request.Body.Close()
-		input := string(body)
-
-		// Проверка на ошибку при чтении или если тело пустое (пустой массив JSON)
-		if err != nil || len(body) == 0 {
-			c.JSON(http.StatusBadRequest, "Failed to read request body")
-			return
-		}
-		parsedURL, err := url.ParseRequestURI(input)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid URL"})
-			return
-		}
-
-		// Если тело содержит пустой массив JSON "[]", также возвращаем ошибку
-
-		// Генерация новой ссылки
-		link := AddLink(parsedURL.String())
-
-		// Отправка ответа
-		c.String(http.StatusCreated, link)
+	if !strings.HasPrefix(c.Request.Header.Get("Content-Type"), "text/plain"){
+		c.JSON(http.StatusBadRequest, "Content-Type must be text/plain")
 		return
 	}
-	c.JSON(http.StatusBadRequest, "Content-Type must be text/plain")
+	// Чтение тела запроса
+	body, err := io.ReadAll(c.Request.Body)
+	defer c.Request.Body.Close()
+	input := string(body)
+
+	// Проверка на ошибку при чтении или если тело пустое (пустой массив JSON)
+	if err != nil || len(body) == 0 {
+		c.JSON(http.StatusBadRequest, "Failed to read request body")
+		return
+	}
+	parsedURL, err := url.ParseRequestURI(input)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid URL"})
+		return
+	}
+
+	// Если тело содержит пустой массив JSON "[]", также возвращаем ошибку
+
+	// Генерация новой ссылки
+	link := AddLink(parsedURL.String())
+
+	// Отправка ответа
+	c.String(http.StatusCreated, link)
 	return
 }
 
