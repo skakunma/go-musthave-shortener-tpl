@@ -150,7 +150,6 @@ func AddIddres(c *gin.Context) {
 
 	// Отправка ответа
 	c.String(http.StatusCreated, link)
-	return
 }
 
 func main() {
@@ -168,4 +167,4 @@ func main() {
 	server.GET("/:key", GetIddres)
 	server.Run(flagRunAddr)
 }
-//For start Actions 
+//For start Actions
