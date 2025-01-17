@@ -8,6 +8,10 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
+	"go.uber.org/zap"
+	"bytes"
+
 )
 
 var (
@@ -15,7 +19,36 @@ var (
 	Links   = make(map[string]string)
 	charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	charsetLength = 7
+    sugar zap.SugaredLogger
+
 )
+
+type responseData struct {
+	status int
+	size   int
+	body   *bytes.Buffer
+}
+
+// Обертка для ResponseWriter
+type loggingResponseWriter struct {
+	gin.ResponseWriter
+	responseData *responseData
+}
+
+func (w *loggingResponseWriter) Write(b []byte) (int, error) {
+	// Записываем данные в буфер
+	w.responseData.body.Write(b)
+	// Записываем данные в оригинальный ResponseWriter
+	size, err := w.ResponseWriter.Write(b)
+	w.responseData.size += size
+	return size, err
+}
+
+func (w *loggingResponseWriter) WriteHeader(statusCode int) {
+	w.responseData.status = statusCode
+	w.ResponseWriter.WriteHeader(statusCode)
+}
+
 
 func generateLink() string {
 	var builder strings.Builder
@@ -60,6 +93,35 @@ func GetIddres(c *gin.Context) {
 	}
 }
 
+func WithLogging() gin.HandlerFunc {
+	logFn := func(c *gin.Context) {
+		start := time.Now()
+		uri := c.Request.RequestURI
+		method := c.Request.Method
+		responseData := &responseData {
+			status: 0,
+			size: 0,
+			body:   new(bytes.Buffer),
+		}
+		lw := &loggingResponseWriter{
+			ResponseWriter: c.Writer,
+			responseData:   responseData,
+		}
+		c.Writer = lw
+		c.Next()
+		duration := time.Since(start)
+		sugar.Infoln(
+			"uri", uri,
+			"method", method,
+			"duration", duration,
+			"response_size", responseData.size,
+			"response_status", responseData.status,
+
+			)
+	}
+	return gin.HandlerFunc(logFn)
+}
+
 func AddIddres(c *gin.Context) {
 	if !strings.HasPrefix(c.Request.Header.Get("Content-Type"), "text/plain"){
 		c.JSON(http.StatusBadRequest, "Content-Type must be text/plain")
@@ -93,7 +155,15 @@ func AddIddres(c *gin.Context) {
 
 func main() {
 	parseFlags()
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		// вызываем панику, если ошибка
+		panic(err)
+	}
+	defer logger.Sync()
+	sugar = *logger.Sugar()
 	server := gin.Default()
+	server.Use(WithLogging())
 	server.POST("/", AddIddres)
 	server.GET("/:key", GetIddres)
 	server.Run(flagRunAddr)
