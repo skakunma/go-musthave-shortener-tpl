@@ -182,11 +182,6 @@ func AddIddresJSON(c *gin.Context) {
 	}
 	defer c.Request.Body.Close()
 	body := Inputurl.Url
-
-	if err != nil || len(body) == 0 {
-		c.JSON(http.StatusBadRequest, "Failed to read request body")
-		return
-	}
 	parsedURL, err := url.ParseRequestURI(body)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid URL"})
