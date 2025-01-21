@@ -33,7 +33,7 @@ type (
 		responseData *responseData
 	}
 	Request struct {
-		Url string `json:"url"`
+		URL string `json:"url"`
 	}
 	Response struct {
 		Result string `json:"result"`
@@ -181,7 +181,7 @@ func AddIddresJSON(c *gin.Context) {
 
 	}
 	defer c.Request.Body.Close()
-	body := Inputurl.Url
+	body := Inputurl.URL
 	parsedURL, err := url.ParseRequestURI(body)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid URL"})
