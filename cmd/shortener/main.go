@@ -196,13 +196,13 @@ func AddIddresJSON(c *gin.Context) {
 	// Если тело содержит пустой массив JSON "[]", также возвращаем ошибку
 
 	link := AddLink(parsedURL.String())
-	response, err := json.Marshal(Response{Result: link})
+	_, err = json.Marshal(Response{Result: link})
 	if err != nil {
 		sugar.Infof("Error: %v", err)
 		c.JSON(http.StatusBadGateway, "Problem with service")
 	}
 	// Отправка ответа
-	c.String(http.StatusCreated, string(response))
+	c.JSON(http.StatusCreated, Response{Result: link})
 }
 
 func main() {
