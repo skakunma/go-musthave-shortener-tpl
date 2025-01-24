@@ -1,7 +1,11 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
+	"encoding/json"
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 	"io"
 	"math/rand"
 	"net/http"
@@ -9,32 +13,39 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"go.uber.org/zap"
-	"bytes"
-
 )
 
 var (
-	mu      sync.Mutex
-	Links   = make(map[string]string)
-	charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	mu            sync.Mutex
+	Links         = make(map[string]string)
+	charset       = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	charsetLength = 7
-    sugar zap.SugaredLogger
-
+	sugar         zap.SugaredLogger
 )
 
-type responseData struct {
-	status int
-	size   int
-	body   *bytes.Buffer
-}
+type (
+	responseData struct {
+		status int
+		size   int
+		body   *bytes.Buffer
+	}
+	loggingResponseWriter struct {
+		gin.ResponseWriter
+		responseData *responseData
+	}
+	Request struct {
+		URL string `json:"url"`
+	}
+	Response struct {
+		Result string `json:"result"`
+	}
+	gzipResponseWriter struct {
+		gin.ResponseWriter
+		Writer io.Writer
+	}
+)
 
 // Обертка для ResponseWriter
-type loggingResponseWriter struct {
-	gin.ResponseWriter
-	responseData *responseData
-}
-
 func (w *loggingResponseWriter) Write(b []byte) (int, error) {
 	// Записываем данные в буфер
 	w.responseData.body.Write(b)
@@ -49,6 +60,13 @@ func (w *loggingResponseWriter) WriteHeader(statusCode int) {
 	w.ResponseWriter.WriteHeader(statusCode)
 }
 
+func (g *gzipResponseWriter) Write(data []byte) (int, error) {
+	contentType := g.Header().Get("Content-Type")
+	if strings.HasPrefix(contentType, "application/json") || strings.HasPrefix(contentType, "text/html") {
+		return g.Writer.Write(data)
+	}
+	return g.ResponseWriter.Write(data)
+}
 
 func generateLink() string {
 	var builder strings.Builder
@@ -98,9 +116,9 @@ func WithLogging() gin.HandlerFunc {
 		start := time.Now()
 		uri := c.Request.RequestURI
 		method := c.Request.Method
-		responseData := &responseData {
+		responseData := &responseData{
 			status: 0,
-			size: 0,
+			size:   0,
 			body:   new(bytes.Buffer),
 		}
 		lw := &loggingResponseWriter{
@@ -116,14 +134,46 @@ func WithLogging() gin.HandlerFunc {
 			"duration", duration,
 			"response_size", responseData.size,
 			"response_status", responseData.status,
-
-			)
+		)
 	}
 	return gin.HandlerFunc(logFn)
 }
 
+func gzipMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Обработка входящего запроса (распаковка gzip)
+		if strings.Contains(c.GetHeader("Content-Encoding"), "gzip") {
+			gzipReader, err := gzip.NewReader(c.Request.Body)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to decode gzip request"})
+				c.Abort()
+				return
+			}
+			defer gzipReader.Close()
+
+			// Подменяем тело запроса на распакованное
+			c.Request.Body = io.NopCloser(gzipReader)
+		}
+
+		// Обработка исходящего ответа (сжатие gzip)
+		c.Writer.Header().Set("Vary", "Accept-Encoding")
+		if strings.Contains(c.GetHeader("Accept-Encoding"), "gzip") {
+			c.Writer.Header().Set("Content-Encoding", "gzip")
+			gzipWriter := gzip.NewWriter(c.Writer)
+			defer gzipWriter.Close()
+
+			// Подменяем Writer для записи сжатого ответа
+			c.Writer = &gzipResponseWriter{
+				ResponseWriter: c.Writer,
+				Writer:         gzipWriter,
+			}
+		}
+
+		c.Next()
+	}
+}
 func AddIddres(c *gin.Context) {
-	if !strings.HasPrefix(c.Request.Header.Get("Content-Type"), "text/plain"){
+	if !strings.HasPrefix(c.Request.Header.Get("Content-Type"), "text/plain") {
 		c.JSON(http.StatusBadRequest, "Content-Type must be text/plain")
 		return
 	}
@@ -152,6 +202,48 @@ func AddIddres(c *gin.Context) {
 	c.String(http.StatusCreated, link)
 }
 
+func AddIddresJSON(c *gin.Context) {
+	if !strings.HasPrefix(c.Request.Header.Get("Content-Type"), "application/json") {
+		c.JSON(http.StatusBadRequest, "Content-Type must be application/json")
+		return
+	}
+	// Чтение тела запроса
+	var (
+		Inputurl Request
+		buf      bytes.Buffer
+	)
+	_, err := buf.ReadFrom(c.Request.Body)
+	if err != nil {
+		sugar.Infoln("Probblem with serilizator")
+		c.JSON(http.StatusBadRequest, "In body must be JSON like this")
+		return
+
+	}
+
+	if err = json.Unmarshal(buf.Bytes(), &Inputurl); err != nil {
+		sugar.Infoln("Probblem with serilizator")
+		c.JSON(http.StatusBadRequest, "In body must be JSON like this")
+		return
+
+	}
+	defer c.Request.Body.Close()
+	body := Inputurl.URL
+	parsedURL, err := url.ParseRequestURI(body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid URL"})
+		return
+	}
+
+	link := AddLink(parsedURL.String())
+	_, err = json.Marshal(Response{Result: link})
+	if err != nil {
+		sugar.Infof("Error: %v", err)
+		c.JSON(http.StatusBadGateway, "Problem with service")
+	}
+	// Отправка ответа
+	c.JSON(http.StatusCreated, Response{Result: link})
+}
+
 func main() {
 	parseFlags()
 	logger, err := zap.NewDevelopment()
@@ -163,8 +255,9 @@ func main() {
 	sugar = *logger.Sugar()
 	server := gin.Default()
 	server.Use(WithLogging())
+	server.Use(gzipMiddleware())
 	server.POST("/", AddIddres)
 	server.GET("/:key", GetIddres)
+	server.POST("/api/shorten", AddIddresJSON)
 	server.Run(flagRunAddr)
 }
-//For start Actions
