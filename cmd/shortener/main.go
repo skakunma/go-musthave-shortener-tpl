@@ -169,7 +169,8 @@ func gzipMiddleware() gin.HandlerFunc {
 	}
 }
 func AddIddres(c *gin.Context) {
-	if !strings.HasPrefix(c.Request.Header.Get("Content-Type"), "text/plain") {
+	if !strings.HasPrefix(c.Request.Header.Get("Content-Type"), "text/plain") ||
+		!strings.HasPrefix(c.Request.Header.Get("Content-Type"), "application/x-gzip") {
 		c.JSON(http.StatusBadRequest, "Content-Type must be text/plain")
 		return
 	}
