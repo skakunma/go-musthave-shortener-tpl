@@ -141,7 +141,6 @@ func WithLogging() gin.HandlerFunc {
 
 func gzipMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Обработка входящего запроса (распаковка gzip)
 		if strings.Contains(c.GetHeader("Content-Encoding"), "gzip") {
 			gzipReader, err := gzip.NewReader(c.Request.Body)
 			if err != nil {
@@ -151,18 +150,15 @@ func gzipMiddleware() gin.HandlerFunc {
 			}
 			defer gzipReader.Close()
 
-			// Подменяем тело запроса на распакованное
 			c.Request.Body = io.NopCloser(gzipReader)
 		}
 
-		// Обработка исходящего ответа (сжатие gzip)
-		c.Writer.Header().Set("Vary", "Accept-Encoding")
-		if strings.Contains(c.GetHeader("Accept-Encoding"), "gzip") {
+		if strings.Contains(c.Writer.Header().Get("Content-Type"), "application/json") ||
+			strings.Contains(c.Writer.Header().Get("Content-Type"), "text/html") {
 			c.Writer.Header().Set("Content-Encoding", "gzip")
 			gzipWriter := gzip.NewWriter(c.Writer)
 			defer gzipWriter.Close()
 
-			// Подменяем Writer для записи сжатого ответа
 			c.Writer = &gzipResponseWriter{
 				ResponseWriter: c.Writer,
 				Writer:         gzipWriter,
