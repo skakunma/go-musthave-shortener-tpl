@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -38,6 +39,10 @@ type (
 	Response struct {
 		Result string `json:"result"`
 	}
+	gzipResponseWriter struct {
+		gin.ResponseWriter
+		Writer io.Writer
+	}
 )
 
 // Обертка для ResponseWriter
@@ -53,6 +58,14 @@ func (w *loggingResponseWriter) Write(b []byte) (int, error) {
 func (w *loggingResponseWriter) WriteHeader(statusCode int) {
 	w.responseData.status = statusCode
 	w.ResponseWriter.WriteHeader(statusCode)
+}
+
+func (g *gzipResponseWriter) Write(data []byte) (int, error) {
+	contentType := g.Header().Get("Content-Type")
+	if strings.HasPrefix(contentType, "application/json") || strings.HasPrefix(contentType, "text/html") {
+		return g.Writer.Write(data)
+	}
+	return g.ResponseWriter.Write(data)
 }
 
 func generateLink() string {
@@ -126,11 +139,42 @@ func WithLogging() gin.HandlerFunc {
 	return gin.HandlerFunc(logFn)
 }
 
+func gzipMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if strings.Contains(c.GetHeader("Content-Encoding"), "gzip") {
+			gzipReader, err := gzip.NewReader(c.Request.Body)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to decode gzip request"})
+				c.Abort()
+				return
+			}
+			defer gzipReader.Close()
+
+			c.Request.Body = io.NopCloser(gzipReader)
+		}
+
+		if strings.Contains(c.Writer.Header().Get("Content-Type"), "application/json") ||
+			strings.Contains(c.Writer.Header().Get("Content-Type"), "text/html") {
+			c.Writer.Header().Set("Content-Encoding", "gzip")
+			gzipWriter := gzip.NewWriter(c.Writer)
+			defer gzipWriter.Close()
+
+			c.Writer = &gzipResponseWriter{
+				ResponseWriter: c.Writer,
+				Writer:         gzipWriter,
+			}
+		}
+
+		c.Next()
+	}
+}
 func AddIddres(c *gin.Context) {
-	if !strings.HasPrefix(c.Request.Header.Get("Content-Type"), "text/plain") {
+	if !strings.HasPrefix(c.Request.Header.Get("Content-Type"), "text/plain") &&
+		!strings.HasPrefix(c.Request.Header.Get("Content-Type"), "application/x-gzip") {
 		c.JSON(http.StatusBadRequest, "Content-Type must be text/plain")
 		return
 	}
+
 	// Чтение тела запроса
 	body, err := io.ReadAll(c.Request.Body)
 	defer c.Request.Body.Close()
@@ -188,8 +232,6 @@ func AddIddresJSON(c *gin.Context) {
 		return
 	}
 
-	// Если тело содержит пустой массив JSON "[]", также возвращаем ошибку
-
 	link := AddLink(parsedURL.String())
 	_, err = json.Marshal(Response{Result: link})
 	if err != nil {
@@ -211,10 +253,9 @@ func main() {
 	sugar = *logger.Sugar()
 	server := gin.Default()
 	server.Use(WithLogging())
+	server.Use(gzipMiddleware())
 	server.POST("/", AddIddres)
 	server.GET("/:key", GetIddres)
 	server.POST("/api/shorten", AddIddresJSON)
 	server.Run(flagRunAddr)
 }
-
-//For start Actions
