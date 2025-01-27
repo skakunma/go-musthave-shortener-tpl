@@ -4,15 +4,19 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
-	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
+	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
 	"net/url"
+	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 var (
@@ -42,6 +46,11 @@ type (
 	gzipResponseWriter struct {
 		gin.ResponseWriter
 		Writer io.Writer
+	}
+	shortenTextFile struct {
+		Uuid        string `json:"uuid"`
+		ShorURL     string `json:"short_url"`
+		OriginalURL string `json:"original_url"`
 	}
 )
 
@@ -79,15 +88,20 @@ func generateLink() string {
 
 	return builder.String()
 }
-func AddLink(Link string) string {
+func AddLink(Link string) (string, error) {
 	for {
 		randomLink := generateLink()
 		mu.Lock()
 		if _, exist := Links[randomLink]; !exist {
 			Links[randomLink] = Link
 			mu.Unlock()
-
-			return flagBaseURL + randomLink
+			uuid := strconv.Itoa(len(Links) - 1)
+			url := shortenTextFile{Uuid: uuid, ShorURL: randomLink, OriginalURL: Link}
+			err := url.SaveURLInfo()
+			if err != nil {
+				return "", err
+			}
+			return flagBaseURL + randomLink, nil
 		}
 	}
 }
@@ -109,6 +123,32 @@ func GetIddres(c *gin.Context) {
 	} else {
 		c.JSON(http.StatusNotFound, nil)
 	}
+}
+
+func (info *shortenTextFile) SaveURLInfo() error {
+	// Преобразуем структуру в JSON
+	data, err := json.Marshal(info)
+	if err != nil {
+		return err
+	}
+
+	// Добавляем новую строку
+	data = append(data, '\n')
+
+	// Открываем файл для записи
+	file, err := os.OpenFile(flagPathToSave, os.O_CREATE|os.O_RDWR, 0666)
+
+	if err != nil {
+		return fmt.Errorf("failed to open file: %w", err)
+	}
+
+	// Пишем данные в файл
+	if _, err := file.Write(data); err != nil {
+		return fmt.Errorf("failed to write to file: %w", err)
+	}
+	file.Close()
+
+	return nil
 }
 
 func WithLogging() gin.HandlerFunc {
@@ -194,7 +234,10 @@ func AddIddres(c *gin.Context) {
 	// Если тело содержит пустой массив JSON "[]", также возвращаем ошибку
 
 	// Генерация новой ссылки
-	link := AddLink(parsedURL.String())
+	link, err := AddLink(parsedURL.String())
+	if err != nil {
+		sugar.Error(err)
+	}
 
 	// Отправка ответа
 	c.String(http.StatusCreated, link)
@@ -232,7 +275,12 @@ func AddIddresJSON(c *gin.Context) {
 		return
 	}
 
-	link := AddLink(parsedURL.String())
+	link, err := AddLink(parsedURL.String())
+
+	if err != nil {
+		sugar.Error(err)
+	}
+
 	_, err = json.Marshal(Response{Result: link})
 	if err != nil {
 		sugar.Infof("Error: %v", err)
