@@ -48,7 +48,7 @@ type (
 		Writer io.Writer
 	}
 	shortenTextFile struct {
-		Uuid        string `json:"uuid"`
+		UUID        string `json:"uuid"`
 		ShorURL     string `json:"short_url"`
 		OriginalURL string `json:"original_url"`
 	}
@@ -96,7 +96,7 @@ func AddLink(Link string) (string, error) {
 			Links[randomLink] = Link
 			mu.Unlock()
 			uuid := strconv.Itoa(len(Links) - 1)
-			url := &shortenTextFile{Uuid: uuid, ShorURL: randomLink, OriginalURL: Link}
+			url := &shortenTextFile{UUID: uuid, ShorURL: randomLink, OriginalURL: Link}
 			err := url.SaveURLInfo()
 			if err != nil {
 				return "", err
