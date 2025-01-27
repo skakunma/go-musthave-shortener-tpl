@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
@@ -49,7 +50,7 @@ type (
 	}
 	shortenTextFile struct {
 		UUID        string `json:"uuid"`
-		ShorURL     string `json:"short_url"`
+		ShortURL    string `json:"short_url"`
 		OriginalURL string `json:"original_url"`
 	}
 )
@@ -96,7 +97,7 @@ func AddLink(Link string) (string, error) {
 			Links[randomLink] = Link
 			mu.Unlock()
 			uuid := strconv.Itoa(len(Links) - 1)
-			url := &shortenTextFile{UUID: uuid, ShorURL: randomLink, OriginalURL: Link}
+			url := &shortenTextFile{UUID: uuid, ShortURL: randomLink, OriginalURL: Link}
 			err := url.SaveURLInfo()
 			if err != nil {
 				return "", err
@@ -289,15 +290,46 @@ func AddIddresJSON(c *gin.Context) {
 	c.JSON(http.StatusCreated, Response{Result: link})
 }
 
+func loadLinksFromFile() error {
+	// Открываем файл
+	file, err := os.Open(flagPathToSave)
+	if err != nil {
+		return fmt.Errorf("failed to open file: %v", err)
+	}
+	defer file.Close()
+
+	// Читаем файл построчно
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		var link shortenTextFile
+		// Парсим каждую строку как JSON
+		err := json.Unmarshal(scanner.Bytes(), &link)
+		if err != nil {
+			return fmt.Errorf("failed to parse JSON: %v", err)
+		}
+		// Заполняем глобальную карту Links
+		Links[link.ShortURL] = link.OriginalURL
+	}
+
+	// Проверка на ошибки при чтении
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("failed to read file: %v", err)
+	}
+
+	return nil
+}
+
 func main() {
 	parseFlags()
 	logger, err := zap.NewDevelopment()
 	if err != nil {
-		// вызываем панику, если ошибка
 		panic(err)
 	}
 	defer logger.Sync()
 	sugar = *logger.Sugar()
+	if err := loadLinksFromFile(); err != nil {
+		sugar.Error(err)
+	}
 	server := gin.Default()
 	server.Use(WithLogging())
 	server.Use(gzipMiddleware())
