@@ -48,7 +48,7 @@ type (
 		Writer io.Writer
 	}
 	shortenTextFile struct {
-		Uuid        string `json:"uuid"`
+		UUID        string `json:"uuid"`
 		ShorURL     string `json:"short_url"`
 		OriginalURL string `json:"original_url"`
 	}
