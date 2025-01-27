@@ -96,7 +96,7 @@ func AddLink(Link string) (string, error) {
 			Links[randomLink] = Link
 			mu.Unlock()
 			uuid := strconv.Itoa(len(Links) - 1)
-			url := shortenTextFile{Uuid: uuid, ShorURL: randomLink, OriginalURL: Link}
+			url := &shortenTextFile{Uuid: uuid, ShorURL: randomLink, OriginalURL: Link}
 			err := url.SaveURLInfo()
 			if err != nil {
 				return "", err
@@ -134,7 +134,6 @@ func (info *shortenTextFile) SaveURLInfo() error {
 
 	// Добавляем новую строку
 	data = append(data, '\n')
-
 	// Открываем файл для записи
 	file, err := os.OpenFile(flagPathToSave, os.O_CREATE|os.O_RDWR, 0666)
 

@@ -13,6 +13,7 @@ import (
 
 func TestPostIddres(t *testing.T) {
 	flagBaseURL = "http://localhost:8080/"
+	flagPathToSave = "default.txt"
 	tests := []struct {
 		name string
 		want struct {
@@ -83,6 +84,7 @@ func TestPostIddres(t *testing.T) {
 
 func TestGetIddres(t *testing.T) {
 	r := gin.Default()
+	flagPathToSave = "default.txt"
 	r.GET("/:key", GetIddres) // Обработчик для GET-запросов
 	r.POST("/", AddIddres)
 
