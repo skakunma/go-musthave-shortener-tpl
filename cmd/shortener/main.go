@@ -98,9 +98,10 @@ func (g *gzipResponseWriter) Write(data []byte) (int, error) {
 
 func (info *shortenTextFile) SaveURLInfo() error {
 	encoder := json.NewEncoder(file)
-
-	encoder.Encode(info)
-
+	err := encoder.Encode(info)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -123,7 +124,7 @@ func AddLink(Link string) (string, error) {
 			Links.Save(randomLink, Link)
 			mu.Unlock()
 			uuid := strconv.Itoa(Links.Len() - 1)
-			url := &shortenTextFile{UUID: uuid, ShortURL: randomLink, OriginalURL: Link}
+			url := shortenTextFile{UUID: uuid, ShortURL: randomLink, OriginalURL: Link}
 			err := url.SaveURLInfo()
 			if err != nil {
 				return "", err
@@ -318,7 +319,8 @@ func main() {
 		sugar.Error(err)
 	}
 
-	file, err := os.OpenFile(flagPathToSave, os.O_CREATE|os.O_RDWR, 0666)
+	file, err = os.OpenFile(flagPathToSave, os.O_CREATE|os.O_RDWR, 0644)
+	defer file.Close()
 
 	if err != nil {
 		sugar.Errorf("failed to open file: %w", err)
@@ -331,5 +333,4 @@ func main() {
 	server.GET("/:key", GetIddres)
 	server.POST("/api/shorten", AddIddresJSON)
 	server.Run(flagRunAddr)
-	file.Close()
 }
