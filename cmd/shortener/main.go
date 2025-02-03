@@ -22,10 +22,11 @@ import (
 
 var (
 	mu            sync.Mutex
-	Links         = make(map[string]string)
+	Links         *LinkStorage
 	charset       = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	charsetLength = 7
 	sugar         zap.SugaredLogger
+	file          *os.File
 )
 
 type (
@@ -53,7 +54,27 @@ type (
 		ShortURL    string `json:"short_url"`
 		OriginalURL string `json:"original_url"`
 	}
+	LinkStorage struct {
+		links map[string]string
+	}
 )
+
+func NewLinkStorage() *LinkStorage {
+	return &LinkStorage{links: map[string]string{}}
+}
+
+func (s *LinkStorage) Save(short string, original string) {
+	s.links[short] = original
+}
+
+func (s *LinkStorage) Get(short string) (string, bool) {
+	original, exists := s.links[short]
+	return original, exists
+}
+
+func (s *LinkStorage) Len() int {
+	return len(s.links)
+}
 
 // Обертка для ResponseWriter
 func (w *loggingResponseWriter) Write(b []byte) (int, error) {
@@ -93,10 +114,10 @@ func AddLink(Link string) (string, error) {
 	for {
 		randomLink := generateLink()
 		mu.Lock()
-		if _, exist := Links[randomLink]; !exist {
-			Links[randomLink] = Link
+		if _, exist := Links.Get(randomLink); !exist {
+			Links.Save(randomLink, Link)
 			mu.Unlock()
-			uuid := strconv.Itoa(len(Links) - 1)
+			uuid := strconv.Itoa(Links.Len() - 1)
 			url := &shortenTextFile{UUID: uuid, ShortURL: randomLink, OriginalURL: Link}
 			err := url.SaveURLInfo()
 			if err != nil {
@@ -108,18 +129,16 @@ func AddLink(Link string) (string, error) {
 }
 
 func GetLink(key string) (string, bool) {
-	if value, exist := Links[key]; exist {
+	if value, exist := Links.Get(key); exist {
 		return value, true
 	}
 	return "", false
 }
 
 func GetIddres(c *gin.Context) {
-	// Проверяем, что это POST-запрос и Content-Type - text/plain
 	path := c.Param("key")
 	link, isTrue := GetLink(path)
 	if isTrue {
-		// Automatically sets the Location header and performs the redirect
 		c.Redirect(http.StatusTemporaryRedirect, link)
 	} else {
 		c.JSON(http.StatusNotFound, nil)
@@ -127,26 +146,9 @@ func GetIddres(c *gin.Context) {
 }
 
 func (info *shortenTextFile) SaveURLInfo() error {
-	// Преобразуем структуру в JSON
-	data, err := json.Marshal(info)
-	if err != nil {
-		return err
-	}
+	encoder := json.NewEncoder(file)
 
-	// Добавляем новую строку
-	data = append(data, '\n')
-	// Открываем файл для записи
-	file, err := os.OpenFile(flagPathToSave, os.O_CREATE|os.O_RDWR, 0666)
-
-	if err != nil {
-		return fmt.Errorf("failed to open file: %w", err)
-	}
-
-	// Пишем данные в файл
-	if _, err := file.Write(data); err != nil {
-		return fmt.Errorf("failed to write to file: %w", err)
-	}
-	file.Close()
+	encoder.Encode(info)
 
 	return nil
 }
@@ -215,12 +217,10 @@ func AddIddres(c *gin.Context) {
 		return
 	}
 
-	// Чтение тела запроса
 	body, err := io.ReadAll(c.Request.Body)
 	defer c.Request.Body.Close()
 	input := string(body)
 
-	// Проверка на ошибку при чтении или если тело пустое (пустой массив JSON)
 	if err != nil || len(body) == 0 {
 		c.JSON(http.StatusBadRequest, "Failed to read request body")
 		return
@@ -231,9 +231,6 @@ func AddIddres(c *gin.Context) {
 		return
 	}
 
-	// Если тело содержит пустой массив JSON "[]", также возвращаем ошибку
-
-	// Генерация новой ссылки
 	link, err := AddLink(parsedURL.String())
 	if err != nil {
 		sugar.Error(err)
@@ -248,7 +245,6 @@ func AddIddresJSON(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, "Content-Type must be application/json")
 		return
 	}
-	// Чтение тела запроса
 	var (
 		Inputurl Request
 		buf      bytes.Buffer
@@ -308,7 +304,7 @@ func loadLinksFromFile() error {
 			return fmt.Errorf("failed to parse JSON: %v", err)
 		}
 		// Заполняем глобальную карту Links
-		Links[link.ShortURL] = link.OriginalURL
+		Links.Save(link.ShortURL, link.OriginalURL)
 	}
 
 	// Проверка на ошибки при чтении
@@ -321,6 +317,7 @@ func loadLinksFromFile() error {
 
 func main() {
 	parseFlags()
+	Links = NewLinkStorage()
 	logger, err := zap.NewDevelopment()
 	if err != nil {
 		panic(err)
@@ -330,6 +327,13 @@ func main() {
 	if err := loadLinksFromFile(); err != nil {
 		sugar.Error(err)
 	}
+
+	file, err := os.OpenFile(flagPathToSave, os.O_CREATE|os.O_RDWR, 0666)
+
+	if err != nil {
+		sugar.Errorf("failed to open file: %w", err)
+	}
+
 	server := gin.Default()
 	server.Use(WithLogging())
 	server.Use(gzipMiddleware())
@@ -337,4 +341,5 @@ func main() {
 	server.GET("/:key", GetIddres)
 	server.POST("/api/shorten", AddIddresJSON)
 	server.Run(flagRunAddr)
+	file.Close()
 }
