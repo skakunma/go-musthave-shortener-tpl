@@ -320,7 +320,6 @@ func main() {
 	}
 
 	file, err = os.OpenFile(flagPathToSave, os.O_CREATE|os.O_RDWR, 0644)
-	defer file.Close()
 
 	if err != nil {
 		sugar.Errorf("failed to open file: %w", err)
@@ -333,4 +332,5 @@ func main() {
 	server.GET("/:key", GetIddres)
 	server.POST("/api/shorten", AddIddresJSON)
 	server.Run(flagRunAddr)
+	file.Close()
 }
