@@ -76,11 +76,8 @@ func (s *LinkStorage) Len() int {
 	return len(s.links)
 }
 
-// Обертка для ResponseWriter
 func (w *loggingResponseWriter) Write(b []byte) (int, error) {
-	// Записываем данные в буфер
 	w.responseData.body.Write(b)
-	// Записываем данные в оригинальный ResponseWriter
 	size, err := w.ResponseWriter.Write(b)
 	w.responseData.size += size
 	return size, err
@@ -97,6 +94,14 @@ func (g *gzipResponseWriter) Write(data []byte) (int, error) {
 		return g.Writer.Write(data)
 	}
 	return g.ResponseWriter.Write(data)
+}
+
+func (info *shortenTextFile) SaveURLInfo() error {
+	encoder := json.NewEncoder(file)
+
+	encoder.Encode(info)
+
+	return nil
 }
 
 func generateLink() string {
@@ -143,14 +148,6 @@ func GetIddres(c *gin.Context) {
 	} else {
 		c.JSON(http.StatusNotFound, nil)
 	}
-}
-
-func (info *shortenTextFile) SaveURLInfo() error {
-	encoder := json.NewEncoder(file)
-
-	encoder.Encode(info)
-
-	return nil
 }
 
 func WithLogging() gin.HandlerFunc {
@@ -236,7 +233,6 @@ func AddIddres(c *gin.Context) {
 		sugar.Error(err)
 	}
 
-	// Отправка ответа
 	c.String(http.StatusCreated, link)
 }
 
@@ -282,32 +278,26 @@ func AddIddresJSON(c *gin.Context) {
 		sugar.Infof("Error: %v", err)
 		c.JSON(http.StatusBadGateway, "Problem with service")
 	}
-	// Отправка ответа
 	c.JSON(http.StatusCreated, Response{Result: link})
 }
 
 func loadLinksFromFile() error {
-	// Открываем файл
 	file, err := os.Open(flagPathToSave)
 	if err != nil {
 		return fmt.Errorf("failed to open file: %v", err)
 	}
 	defer file.Close()
 
-	// Читаем файл построчно
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		var link shortenTextFile
-		// Парсим каждую строку как JSON
 		err := json.Unmarshal(scanner.Bytes(), &link)
 		if err != nil {
 			return fmt.Errorf("failed to parse JSON: %v", err)
 		}
-		// Заполняем глобальную карту Links
 		Links.Save(link.ShortURL, link.OriginalURL)
 	}
 
-	// Проверка на ошибки при чтении
 	if err := scanner.Err(); err != nil {
 		return fmt.Errorf("failed to read file: %v", err)
 	}
