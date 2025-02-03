@@ -1,1 +1,1 @@
-{"uuid":"0","short_url":"kzyPYcL","original_url":"https://google.com"}
+{"uuid":"1","short_url":"unIfUDc","original_url":"http://example.com"}

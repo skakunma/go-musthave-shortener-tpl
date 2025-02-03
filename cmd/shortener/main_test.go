@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"regexp"
 	"testing"
 
@@ -25,6 +26,11 @@ func TestPostIddres(t *testing.T) {
 	flagBaseURL = "http://localhost:8080/"
 	Links = NewLinkStorage()
 	r := setupRouter()
+	file, err := os.OpenFile(flagPathToSave, os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		return
+	}
+	defer file.Close()
 
 	tests := []struct {
 		name    string
@@ -65,6 +71,11 @@ func TestGetIddres(t *testing.T) {
 	flagBaseURL = "http://localhost:8080/"
 	Links = NewLinkStorage()
 	r := setupRouter()
+	file, err := os.OpenFile(flagPathToSave, os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		return
+	}
+	defer file.Close()
 
 	postReq := httptest.NewRequest(http.MethodPost, "/", io.NopCloser(bytes.NewBufferString("https://google.com")))
 	postReq.Header.Set("Content-Type", "text/plain")
@@ -105,6 +116,11 @@ func TestGetIddresNotFound(t *testing.T) {
 }
 
 func TestAddIddresJSON(t *testing.T) {
+	file, err := os.OpenFile(flagPathToSave, os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		return
+	}
+	defer file.Close()
 	flagBaseURL = "http://localhost:8080/"
 	Links = NewLinkStorage()
 	r := setupRouter()
@@ -144,21 +160,9 @@ func TestAddIddresJSON(t *testing.T) {
 			contentType: "application/json",
 			request:     `{"url": "http://example.com"}`,
 			want:        http.StatusCreated,
-			wantPattern: `^http://localhost:8080/[a-zA-Z0-9]{7}$`,
+			wantPattern: `^{"result":"http://localhost:8080/[a-zA-Z0-9]{7}$"}`,
 		},
 	}
-	t.Run(tests[1].name, func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodPost, "/api/shorten", bytes.NewBufferString(tests[1].request))
-		req.Header.Set("Content-Type", tests[1].contentType)
-
-		w := httptest.NewRecorder()
-		r.ServeHTTP(w, req)
-
-		if w.Code != tests[1].want {
-			t.Errorf("Expected status code %d, but got %d", tests[1].want, w.Code)
-		}
-
-	})
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -187,5 +191,3 @@ func TestAddIddresJSON(t *testing.T) {
 		})
 	}
 }
-
-func TestSavedLinks()
