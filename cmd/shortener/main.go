@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"compress/gzip"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -237,6 +238,16 @@ func AddIddres(c *gin.Context) {
 	c.String(http.StatusCreated, link)
 }
 
+func ConnDB() error {
+	db, err := sql.Open("pgx", flagForDB)
+	if err != nil {
+		return err
+	}
+	db.Close()
+	return nil
+
+}
+
 func AddIddresJSON(c *gin.Context) {
 	if !strings.HasPrefix(c.Request.Header.Get("Content-Type"), "application/json") {
 		c.JSON(http.StatusBadRequest, "Content-Type must be application/json")
@@ -280,6 +291,13 @@ func AddIddresJSON(c *gin.Context) {
 		c.JSON(http.StatusBadGateway, "Problem with service")
 	}
 	c.JSON(http.StatusCreated, Response{Result: link})
+}
+
+func StatusConnDB(c *gin.Context) {
+	if err := ConnDB(); err != nil {
+		c.Status(http.StatusInternalServerError)
+	}
+	c.Status(http.StatusOK)
 }
 
 func loadLinksFromFile() error {
@@ -331,6 +349,7 @@ func main() {
 	server.POST("/", AddIddres)
 	server.GET("/:key", GetIddres)
 	server.POST("/api/shorten", AddIddresJSON)
+	server.GET("/ping", StatusConnDB)
 	server.Run(flagRunAddr)
 	file.Close()
 }
