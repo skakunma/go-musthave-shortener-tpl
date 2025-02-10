@@ -94,9 +94,9 @@ func (s *PostgresStorage) Ping() error {
 	return s.db.Ping()
 }
 
-func (p *PostgresStorage) Len() int {
+func (s *PostgresStorage) Len() int {
 	var count int
-	err := p.db.QueryRow("SELECT COUNT(*) FROM urls").Scan(&count)
+	err := s.db.QueryRow("SELECT COUNT(*) FROM urls").Scan(&count)
 	if err != nil {
 		return 0 // или обработай ошибку
 	}
