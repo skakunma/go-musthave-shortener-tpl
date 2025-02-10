@@ -1,10 +1,10 @@
 package main
 
 import (
+	"GoIncrease1/cmd/storage"
 	"bufio"
 	"bytes"
 	"compress/gzip"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,17 +17,19 @@ import (
 	"sync"
 	"time"
 
+	_ "github.com/jackc/pgx/v5/stdlib"
+
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
 var (
 	mu            sync.Mutex
-	Links         *LinkStorage
 	charset       = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	charsetLength = 7
 	sugar         zap.SugaredLogger
 	file          *os.File
+	store         storage.Storage
 )
 
 type (
@@ -55,27 +57,7 @@ type (
 		ShortURL    string `json:"short_url"`
 		OriginalURL string `json:"original_url"`
 	}
-	LinkStorage struct {
-		links map[string]string
-	}
 )
-
-func NewLinkStorage() *LinkStorage {
-	return &LinkStorage{links: map[string]string{}}
-}
-
-func (s *LinkStorage) Save(short string, original string) {
-	s.links[short] = original
-}
-
-func (s *LinkStorage) Get(short string) (string, bool) {
-	original, exists := s.links[short]
-	return original, exists
-}
-
-func (s *LinkStorage) Len() int {
-	return len(s.links)
-}
 
 func (w *loggingResponseWriter) Write(b []byte) (int, error) {
 	w.responseData.body.Write(b)
@@ -121,10 +103,10 @@ func AddLink(Link string) (string, error) {
 	for {
 		randomLink := generateLink()
 		mu.Lock()
-		if _, exist := Links.Get(randomLink); !exist {
-			Links.Save(randomLink, Link)
+		if _, exist, _ := store.Get(randomLink); !exist {
+			store.Save(randomLink, Link)
 			mu.Unlock()
-			uuid := strconv.Itoa(Links.Len() - 1)
+			uuid := strconv.Itoa(store.Len() - 1)
 			url := shortenTextFile{UUID: uuid, ShortURL: randomLink, OriginalURL: Link}
 			err := url.SaveURLInfo()
 			if err != nil {
@@ -136,7 +118,7 @@ func AddLink(Link string) (string, error) {
 }
 
 func GetLink(key string) (string, bool) {
-	if value, exist := Links.Get(key); exist {
+	if value, exist, err := store.Get(key); exist && err == nil {
 		return value, true
 	}
 	return "", false
@@ -238,16 +220,6 @@ func AddIddres(c *gin.Context) {
 	c.String(http.StatusCreated, link)
 }
 
-func ConnDB() error {
-	db, err := sql.Open("pgx", flagForDB)
-	if err != nil {
-		return err
-	}
-	db.Close()
-	return nil
-
-}
-
 func AddIddresJSON(c *gin.Context) {
 	if !strings.HasPrefix(c.Request.Header.Get("Content-Type"), "application/json") {
 		c.JSON(http.StatusBadRequest, "Content-Type must be application/json")
@@ -294,10 +266,15 @@ func AddIddresJSON(c *gin.Context) {
 }
 
 func StatusConnDB(c *gin.Context) {
-	if err := ConnDB(); err != nil {
+	if _, ok := store.(*storage.PostgresStorage); ok {
+		if err := store.Ping(); err != nil {
+			sugar.Error(err)
+			c.Status(http.StatusInternalServerError)
+		}
+		c.Status(http.StatusOK)
+	} else {
 		c.Status(http.StatusInternalServerError)
 	}
-	c.Status(http.StatusOK)
 }
 
 func loadLinksFromFile() error {
@@ -314,7 +291,8 @@ func loadLinksFromFile() error {
 		if err != nil {
 			return fmt.Errorf("failed to parse JSON: %v", err)
 		}
-		Links.Save(link.ShortURL, link.OriginalURL)
+		store.Save(link.ShortURL, link.OriginalURL)
+
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -326,13 +304,21 @@ func loadLinksFromFile() error {
 
 func main() {
 	parseFlags()
-	Links = NewLinkStorage()
 	logger, err := zap.NewDevelopment()
 	if err != nil {
 		panic(err)
 	}
 	defer logger.Sync()
 	sugar = *logger.Sugar()
+	if flagForDB != "" {
+		pgStorage, err := storage.NewPostgresStorage(flagForDB)
+		if err != nil {
+			sugar.Error(err)
+		}
+		store = pgStorage
+	} else {
+		store = storage.NewLinkStorage()
+	}
 	if err := loadLinksFromFile(); err != nil {
 		sugar.Error(err)
 	}

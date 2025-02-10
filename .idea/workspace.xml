@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="ALL" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="d800eb54-3226-4c54-9b10-e1095f33e545" name="Changes" comment="New commit">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmd/shortener/default.txt" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/shortener/default.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmd/shortener/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/shortener/main.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmd/shortener/main_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/shortener/main_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/go.mod" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/go.sum" beforeDir="false" afterPath="$PROJECT_DIR$/go.sum" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Go File" />
+      </list>
+    </option>
+  </component>
+  <component name="GOROOT" url="file:///usr/local/go" />
+  <component name="Git.Settings">
+    <excluded-from-favorite>
+      <branch-storage>
+        <map>
+          <entry type="LOCAL">
+            <value>
+              <list>
+                <branch-info repo="$PROJECT_DIR$" source="main" />
+              </list>
+            </value>
+          </entry>
+        </map>
+      </branch-storage>
+    </excluded-from-favorite>
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="iter8" />
+      </map>
+    </option>
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 7
+}</component>
+  <component name="ProjectId" id="2qqg8jOog2ClqIUhxBhUh1qbwbX" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "DefaultGoTemplateProperty": "Go File",
+    "Go Build.go build Go.executor": "Run",
+    "Go Build.go build GoIncrease1.executor": "Debug",
+    "Go Build.go build go-musthave-shortener-tpl/.executor": "Run",
+    "Go Build.go build shortener/.executor": "Run",
+    "Go Test.TestAddAddressJSON in GoIncrease1/cmd/shortener.executor": "Debug",
+    "Go Test.TestAddAddressJSON/Valid_URL in GoIncrease1/cmd/shortener.executor": "Run",
+    "Go Test.TestGetAddressNotFound in GoIncrease1/cmd/shortener.executor": "Debug",
+    "Go Test.TestGetIddres in GoIncrease1/cmd/shortener.executor": "Run",
+    "Go Test.TestGetIddresNotFound in GoIncrease1/cmd/shortener.executor": "Run",
+    "Go Test.TestPostAddress in GoIncrease1/cmd/shortener.executor": "Debug",
+    "Go Test.TestPostIddres in GoIncrease1/cmd/shortener.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.go.formatter.settings.were.checked": "true",
+    "RunOnceActivity.go.migrated.go.modules.settings": "true",
+    "RunOnceActivity.go.modules.go.list.on.any.changes.was.set": "true",
+    "git-widget-placeholder": "iter11",
+    "go.import.settings.migrated": "true",
+    "go.sdk.automatically.set": "true",
+    "last_opened_file_path": "/Users/skakunda/programming/YandexPrcticum/go/go-musthave-shortener-tpl",
+    "node.js.detected.package.eslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "run.code.analysis.last.selected.profile": "pProject Default",
+    "settings.editor.selected.configurable": "com.goide.configuration.GoLibrariesConfigurableProvider"
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/cmd/storage" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Go Test.TestAddAddressJSON in GoIncrease1/cmd/shortener">
+    <configuration name="go build Go" type="GoApplicationRunConfiguration" factoryName="Go Application" nameIsGenerated="true">
+      <module name="go-musthave-shortener-tpl" />
+      <working_directory value="$PROJECT_DIR$" />
+      <kind value="PACKAGE" />
+      <package value="Go" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="go build go-musthave-shortener-tpl/" type="GoApplicationRunConfiguration" factoryName="Go Application" nameIsGenerated="true">
+      <module name="go-musthave-shortener-tpl" />
+      <working_directory value="$PROJECT_DIR$/cmd/shortener" />
+      <kind value="DIRECTORY" />
+      <package value="GoIncrease1/cmd/shortener" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$/../go-musthave-shortener-tpl|$PROJECT_DIR$/cmd/shortener/main.go|$PROJECT_DIR$/cmd/shortener/flags.go" />
+      <method v="2" />
+    </configuration>
+    <configuration name="TestAddAddressJSON in GoIncrease1/cmd/shortener" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="go-musthave-shortener-tpl" />
+      <working_directory value="$PROJECT_DIR$/cmd/shortener" />
+      <root_directory value="$PROJECT_DIR$" />
+      <kind value="PACKAGE" />
+      <package value="GoIncrease1/cmd/shortener" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$" />
+      <framework value="gotest" />
+      <pattern value="^\QTestAddAddressJSON\E$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="TestAddAddressJSON/Valid_URL in GoIncrease1/cmd/shortener" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="go-musthave-shortener-tpl" />
+      <working_directory value="$PROJECT_DIR$/cmd/shortener" />
+      <root_directory value="$PROJECT_DIR$" />
+      <kind value="PACKAGE" />
+      <package value="GoIncrease1/cmd/shortener" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$" />
+      <framework value="gotest" />
+      <pattern value="^\QTestAddAddressJSON\E$/^\QValid_URL\E$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="TestGetAddressNotFound in GoIncrease1/cmd/shortener" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="go-musthave-shortener-tpl" />
+      <working_directory value="$PROJECT_DIR$/cmd/shortener" />
+      <root_directory value="$PROJECT_DIR$" />
+      <kind value="PACKAGE" />
+      <package value="GoIncrease1/cmd/shortener" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$" />
+      <framework value="gotest" />
+      <pattern value="^\QTestGetAddressNotFound\E$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="TestPostAddress in GoIncrease1/cmd/shortener" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="go-musthave-shortener-tpl" />
+      <working_directory value="$PROJECT_DIR$/cmd/shortener" />
+      <root_directory value="$PROJECT_DIR$" />
+      <kind value="PACKAGE" />
+      <package value="GoIncrease1/cmd/shortener" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$" />
+      <framework value="gotest" />
+      <pattern value="^\QTestPostAddress\E$" />
+      <method v="2" />
+    </configuration>
+    <list>
+      <item itemvalue="Go Build.go build go-musthave-shortener-tpl/" />
+      <item itemvalue="Go Build.go build Go" />
+      <item itemvalue="Go Test.TestAddAddressJSON in GoIncrease1/cmd/shortener" />
+      <item itemvalue="Go Test.TestAddAddressJSON/Valid_URL in GoIncrease1/cmd/shortener" />
+      <item itemvalue="Go Test.TestGetAddressNotFound in GoIncrease1/cmd/shortener" />
+      <item itemvalue="Go Test.TestPostAddress in GoIncrease1/cmd/shortener" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Go Test.TestAddAddressJSON in GoIncrease1/cmd/shortener" />
+        <item itemvalue="Go Test.TestAddAddressJSON/Valid_URL in GoIncrease1/cmd/shortener" />
+        <item itemvalue="Go Test.TestPostAddress in GoIncrease1/cmd/shortener" />
+        <item itemvalue="Go Test.TestGetAddressNotFound in GoIncrease1/cmd/shortener" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-gosdk-d297c17c1fbd-85c80fddc9a6-org.jetbrains.plugins.go.sharedIndexes.bundled-GO-243.23654.166" />
+        <option value="bundled-js-predefined-d6986cc7102b-822845ee3bb5-JavaScript-GO-243.23654.166" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Was add tests" />
+    <MESSAGE value="changed the library" />
+    <MESSAGE value="Was add flags" />
+    <MESSAGE value="Was add env" />
+    <MESSAGE value="New commit" />
+    <option name="LAST_COMMIT_MESSAGE" value="New commit" />
+  </component>
+  <component name="VgoProject">
+    <settings-migrated>true</settings-migrated>
+  </component>
+</project>

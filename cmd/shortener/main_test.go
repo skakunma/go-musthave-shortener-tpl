@@ -10,8 +10,12 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+
+	"GoIncrease1/cmd/storage"
+
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
 )
 
 func setupRouter() *gin.Engine {
@@ -19,26 +23,23 @@ func setupRouter() *gin.Engine {
 	r.POST("/", AddIddres)
 	r.GET("/:key", GetIddres)
 	r.POST("/api/shorten", AddIddresJSON)
+	r.GET("/ping", StatusConnDB)
 	return r
 }
-
-func TestPostIddres(t *testing.T) {
+func TestPostAddress(t *testing.T) {
+	flagPathToSave = "default.txt"
+	file, _ = os.OpenFile(flagPathToSave, os.O_CREATE|os.O_RDWR, 0644)
 	flagBaseURL = "http://localhost:8080/"
-	Links = NewLinkStorage()
+	store = storage.NewLinkStorage()
 	r := setupRouter()
-	file, err := os.OpenFile(flagPathToSave, os.O_CREATE|os.O_RDWR, 0644)
-	if err != nil {
-		return
-	}
-	defer file.Close()
 
 	tests := []struct {
 		name    string
 		request string
 		want    int
 	}{
-		{name: "Empty request body", request: "", want: http.StatusBadRequest},
-		{name: "Valid URL", request: "https://google.com", want: http.StatusCreated},
+		{"Empty request body", "", http.StatusBadRequest},
+		{"Valid URL", "https://google.com", http.StatusCreated},
 	}
 
 	for _, tt := range tests {
@@ -53,66 +54,52 @@ func TestPostIddres(t *testing.T) {
 			w := httptest.NewRecorder()
 			r.ServeHTTP(w, req)
 
-			if w.Code != tt.want {
-				t.Errorf("Expected status code %d, but got %d", tt.want, w.Code)
-			}
+			assert.Equal(t, tt.want, w.Code)
 
 			if w.Code == http.StatusCreated {
-				match, _ := regexp.MatchString(`^http://localhost:8080/[a-zA-Z]{7}$`, w.Body.String())
-				if !match {
-					t.Errorf("Expected response format to match short URL pattern, but got: %s", w.Body.String())
-				}
+				match, _ := regexp.MatchString(`^http://localhost:8080/[a-zA-Z0-9]{7}$`, w.Body.String())
+				assert.True(t, match)
 			}
 		})
 	}
 }
 
-func TestGetIddres(t *testing.T) {
+func TestGetAddress(t *testing.T) {
+	flagPathToSave = "default.txt"
+	file, _ = os.OpenFile(flagPathToSave, os.O_CREATE|os.O_RDWR, 0644)
 	flagBaseURL = "http://localhost:8080/"
-	Links = NewLinkStorage()
+	store = storage.NewLinkStorage()
 	r := setupRouter()
-	file, err := os.OpenFile(flagPathToSave, os.O_CREATE|os.O_RDWR, 0644)
-	if err != nil {
-		return
-	}
-	defer file.Close()
 
-	postReq := httptest.NewRequest(http.MethodPost, "/", io.NopCloser(bytes.NewBufferString("https://google.com")))
+	// Создание сокращенной ссылки
+	postReq := httptest.NewRequest(http.MethodPost, "/", bytes.NewBufferString("https://google.com"))
 	postReq.Header.Set("Content-Type", "text/plain")
 	postRecorder := httptest.NewRecorder()
 	r.ServeHTTP(postRecorder, postReq)
 
-	if postRecorder.Code != http.StatusCreated {
-		t.Fatalf("Expected status code %d, but got %d", http.StatusCreated, postRecorder.Code)
-	}
+	assert.Equal(t, http.StatusCreated, postRecorder.Code)
 
 	createdLink := postRecorder.Body.String()
 	shortKey := createdLink[len(flagBaseURL):]
 
+	// Проверка редиректа
 	getReq := httptest.NewRequest(http.MethodGet, "/"+shortKey, nil)
 	getRecorder := httptest.NewRecorder()
 	r.ServeHTTP(getRecorder, getReq)
 
-	if getRecorder.Code != http.StatusTemporaryRedirect {
-		t.Errorf("Expected status code %d, but got %d", http.StatusTemporaryRedirect, getRecorder.Code)
-	}
-
-	location := getRecorder.Header().Get("Location")
-	if location != "https://google.com" {
-		t.Errorf("Expected Location header to be 'https://google.com', but got '%s'", location)
-	}
+	assert.Equal(t, http.StatusTemporaryRedirect, getRecorder.Code)
+	assert.Equal(t, "https://google.com", getRecorder.Header().Get("Location"))
 }
 
-func TestGetIddresNotFound(t *testing.T) {
+func TestGetAddressNotFound(t *testing.T) {
+	store = storage.NewLinkStorage()
 	r := setupRouter()
 
 	getReq := httptest.NewRequest(http.MethodGet, "/nonexistentkey", nil)
 	getRecorder := httptest.NewRecorder()
 	r.ServeHTTP(getRecorder, getReq)
 
-	if getRecorder.Code != http.StatusNotFound {
-		t.Errorf("Expected status code %d, but got %d", http.StatusNotFound, getRecorder.Code)
-	}
+	assert.Equal(t, http.StatusNotFound, getRecorder.Code)
 }
 
 func TestAddIddresJSON(t *testing.T) {
@@ -122,7 +109,7 @@ func TestAddIddresJSON(t *testing.T) {
 	}
 	defer file.Close()
 	flagBaseURL = "http://localhost:8080/"
-	Links = NewLinkStorage()
+	store = storage.NewLinkStorage()
 	r := setupRouter()
 	logger, err := zap.NewDevelopment()
 	if err != nil {
@@ -160,7 +147,7 @@ func TestAddIddresJSON(t *testing.T) {
 			contentType: "application/json",
 			request:     `{"url": "http://example.com"}`,
 			want:        http.StatusCreated,
-			wantPattern: `^{"result":"http://localhost:8080/[a-zA-Z0-9]{7}$"}`,
+			wantPattern: `^{"result":"http://localhost:8080/[a-zA-Z0-9]{7}"}$`,
 		},
 	}
 
@@ -183,11 +170,12 @@ func TestAddIddresJSON(t *testing.T) {
 					t.Errorf("Failed to parse response JSON: %v", err)
 				}
 
-				match, _ := regexp.MatchString(tt.wantPattern, resp.Result)
+				match, _ := regexp.MatchString(tt.wantPattern, w.Body.String())
 				if !match {
-					t.Errorf("Expected response to match pattern %s, but got: %s", tt.wantPattern, resp.Result)
+					t.Errorf("Expected response to match pattern %s, but got: %s", tt.wantPattern, w.Body.String())
 				}
 			}
 		})
 	}
+
 }
