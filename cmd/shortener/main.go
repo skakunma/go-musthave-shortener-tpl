@@ -7,7 +7,6 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	_ "github.com/jackc/pgx/v5/stdlib"
 	"io"
 	"math/rand"
 	"net/http"
@@ -17,6 +16,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"

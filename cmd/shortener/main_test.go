@@ -6,10 +6,14 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"regexp"
 	"testing"
 
+	"go.uber.org/zap"
+
 	"GoIncrease1/cmd/storage"
+
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
@@ -23,6 +27,8 @@ func setupRouter() *gin.Engine {
 	return r
 }
 func TestPostAddress(t *testing.T) {
+	flagPathToSave = "default.txt"
+	file, _ = os.OpenFile(flagPathToSave, os.O_CREATE|os.O_RDWR, 0644)
 	flagBaseURL = "http://localhost:8080/"
 	store = storage.NewLinkStorage()
 	r := setupRouter()
@@ -59,6 +65,8 @@ func TestPostAddress(t *testing.T) {
 }
 
 func TestGetAddress(t *testing.T) {
+	flagPathToSave = "default.txt"
+	file, _ = os.OpenFile(flagPathToSave, os.O_CREATE|os.O_RDWR, 0644)
 	flagBaseURL = "http://localhost:8080/"
 	store = storage.NewLinkStorage()
 	r := setupRouter()
@@ -68,6 +76,7 @@ func TestGetAddress(t *testing.T) {
 	postReq.Header.Set("Content-Type", "text/plain")
 	postRecorder := httptest.NewRecorder()
 	r.ServeHTTP(postRecorder, postReq)
+
 	assert.Equal(t, http.StatusCreated, postRecorder.Code)
 
 	createdLink := postRecorder.Body.String()
@@ -93,10 +102,20 @@ func TestGetAddressNotFound(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, getRecorder.Code)
 }
 
-func TestAddAddressJSON(t *testing.T) {
+func TestAddIddresJSON(t *testing.T) {
+	file, err := os.OpenFile(flagPathToSave, os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		return
+	}
+	defer file.Close()
 	flagBaseURL = "http://localhost:8080/"
 	store = storage.NewLinkStorage()
 	r := setupRouter()
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		panic(err)
+	}
+	sugar = *logger.Sugar()
 
 	tests := []struct {
 		name        string
@@ -105,31 +124,58 @@ func TestAddAddressJSON(t *testing.T) {
 		want        int
 		wantPattern string
 	}{
-		{"Invalid Content-Type", "text/plain", `{"url": "http://example.com"}`, http.StatusBadRequest, ""},
-		{"Invalid JSON format", "application/json", `{invalid_json}`, http.StatusBadRequest, ""},
-		{"Missing URL in JSON", "application/json", `{"not_url": "http://example.com"}`, http.StatusBadRequest, ""},
-		{"Valid URL", "application/json", `{"url": "http://example.com"}`, http.StatusCreated, `^\{"result":"http://localhost:8080/[a-zA-Z0-9]{7}"\}$`},
+		{
+			name:        "Invalid Content-Type",
+			contentType: "text/plain",
+			request:     `{"url": "http://example.com"}`,
+			want:        http.StatusBadRequest,
+		},
+		{
+			name:        "Invalid JSON format",
+			contentType: "application/json",
+			request:     `{invalid_json}`,
+			want:        http.StatusBadRequest,
+		},
+		{
+			name:        "Missing URL in JSON",
+			contentType: "application/json",
+			request:     `{"not_url": "http://example.com"}`,
+			want:        http.StatusBadRequest,
+		},
+		{
+			name:        "Valid URL",
+			contentType: "application/json",
+			request:     `{"url": "http://example.com"}`,
+			want:        http.StatusCreated,
+			wantPattern: `^{"result":"http://localhost:8080/[a-zA-Z0-9]{7}"}$`,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/api/shorten", bytes.NewBufferString(tt.request))
 			req.Header.Set("Content-Type", tt.contentType)
+
 			w := httptest.NewRecorder()
 			r.ServeHTTP(w, req)
 
-			assert.Equal(t, tt.want, w.Code)
+			if w.Code != tt.want {
+				t.Errorf("Expected status code %d, but got %d", tt.want, w.Code)
+			}
 
 			if w.Code == http.StatusCreated && tt.wantPattern != "" {
-				var resp struct {
-					Result string `json:"result"`
-				}
+				var resp Response
 				err := json.Unmarshal(w.Body.Bytes(), &resp)
-				assert.NoError(t, err)
+				if err != nil {
+					t.Errorf("Failed to parse response JSON: %v", err)
+				}
 
-				match, _ := regexp.MatchString(tt.wantPattern, resp.Result)
-				assert.True(t, match)
+				match, _ := regexp.MatchString(tt.wantPattern, w.Body.String())
+				if !match {
+					t.Errorf("Expected response to match pattern %s, but got: %s", tt.wantPattern, w.Body.String())
+				}
 			}
 		})
 	}
+
 }
