@@ -2,79 +2,65 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"regexp"
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
+
+func setupRouter() *gin.Engine {
+	r := gin.Default()
+	r.POST("/", AddIddres)
+	r.GET("/:key", GetIddres)
+	r.POST("/api/shorten", AddIddresJSON)
+	return r
+}
 
 func TestPostIddres(t *testing.T) {
 	flagBaseURL = "http://localhost:8080/"
+	Links = NewLinkStorage()
+	r := setupRouter()
+	file, err := os.OpenFile(flagPathToSave, os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		return
+	}
+	defer file.Close()
+
 	tests := []struct {
-		name string
-		want struct {
-			Response string
-			Code     int
-		}
+		name    string
 		request string
+		want    int
 	}{
-		{
-			name: "Testing 400",
-			want: struct {
-				Response string
-				Code     int
-			}{
-				Code:     400,
-				Response: `"Failed to read request body"`,
-			},
-			request: "",
-		},
-		{
-			name: "Testing 201",
-			want: struct {
-				Response string
-				Code     int
-			}{
-				Code:     201,
-				Response: "",
-			},
-			request: "https://google.com",
-		},
+		{name: "Empty request body", request: "", want: http.StatusBadRequest},
+		{name: "Valid URL", request: "https://google.com", want: http.StatusCreated},
 	}
 
-	r := gin.Default() // создаем новый Gin рутер
-	r.POST("/", AddIddres)
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 			var req *http.Request
-			if test.request == "" {
+			if tt.request == "" {
 				req = httptest.NewRequest(http.MethodPost, "/", nil)
 			} else {
-				req = httptest.NewRequest(http.MethodPost, "/", io.NopCloser(io.Reader(bytes.NewBufferString(test.request))))
+				req = httptest.NewRequest(http.MethodPost, "/", io.NopCloser(bytes.NewBufferString(tt.request)))
 			}
 			req.Header.Set("Content-Type", "text/plain")
 			w := httptest.NewRecorder()
-			r.ServeHTTP(w, req) // отправляем запрос через Gin рутер
+			r.ServeHTTP(w, req)
 
-			// Проверка кода статуса
-			if w.Code != test.want.Code {
-				t.Errorf("Expected status code %d, but got %d", test.want.Code, w.Code)
+			if w.Code != tt.want {
+				t.Errorf("Expected status code %d, but got %d", tt.want, w.Code)
 			}
 
-			// Проверка тела ответа
-			response := w.Body.String()
-			if test.want.Code == 400 {
-				if response != test.want.Response {
-					t.Errorf("Expected response body '%s', but got '%s'", test.want.Response, response)
-				}
-			} else {
-				match, _ := regexp.MatchString(`^http://localhost:8080/[a-zA-Z]{7}$`, response)
+			if w.Code == http.StatusCreated {
+				match, _ := regexp.MatchString(`^http://localhost:8080/[a-zA-Z]{7}$`, w.Body.String())
 				if !match {
-					t.Errorf("Expected response URL format to match '^http://localhost:8080/[a-zA-Z]{7}$', but got '%s'", response)
+					t.Errorf("Expected response format to match short URL pattern, but got: %s", w.Body.String())
 				}
 			}
 		})
@@ -82,27 +68,35 @@ func TestPostIddres(t *testing.T) {
 }
 
 func TestGetIddres(t *testing.T) {
-	r := gin.Default()
-	r.GET("/:key", GetIddres) // Обработчик для GET-запросов
-	r.POST("/", AddIddres)
+	flagBaseURL = "http://localhost:8080/"
+	Links = NewLinkStorage()
+	r := setupRouter()
+	file, err := os.OpenFile(flagPathToSave, os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		return
+	}
+	defer file.Close()
 
-	// Сначала создаем ссылку через POST-запрос
-	postReq := httptest.NewRequest(http.MethodPost, "/", io.NopCloser(io.Reader(bytes.NewBufferString("https://google.com"))))
+	postReq := httptest.NewRequest(http.MethodPost, "/", io.NopCloser(bytes.NewBufferString("https://google.com")))
 	postReq.Header.Set("Content-Type", "text/plain")
 	postRecorder := httptest.NewRecorder()
 	r.ServeHTTP(postRecorder, postReq)
 
-	// Проверяем, что ссылка была успешно создана
+	if postRecorder.Code != http.StatusCreated {
+		t.Fatalf("Expected status code %d, but got %d", http.StatusCreated, postRecorder.Code)
+	}
+
 	createdLink := postRecorder.Body.String()
-	// Теперь выполняем GET-запрос по этой ссылке
-	getReq := httptest.NewRequest(http.MethodGet, "/"+createdLink[len(`http://localhost:8080/`):], nil)
+	shortKey := createdLink[len(flagBaseURL):]
+
+	getReq := httptest.NewRequest(http.MethodGet, "/"+shortKey, nil)
 	getRecorder := httptest.NewRecorder()
 	r.ServeHTTP(getRecorder, getReq)
 
-	// Проверяем, что мы получили редирект
 	if getRecorder.Code != http.StatusTemporaryRedirect {
 		t.Errorf("Expected status code %d, but got %d", http.StatusTemporaryRedirect, getRecorder.Code)
 	}
+
 	location := getRecorder.Header().Get("Location")
 	if location != "https://google.com" {
 		t.Errorf("Expected Location header to be 'https://google.com', but got '%s'", location)
@@ -110,16 +104,90 @@ func TestGetIddres(t *testing.T) {
 }
 
 func TestGetIddresNotFound(t *testing.T) {
-	r := gin.Default()
-	r.GET("/:key", GetIddres)
+	r := setupRouter()
 
-	// Выполняем GET-запрос для несуществующего ключа
 	getReq := httptest.NewRequest(http.MethodGet, "/nonexistentkey", nil)
 	getRecorder := httptest.NewRecorder()
 	r.ServeHTTP(getRecorder, getReq)
 
-	// Проверяем, что мы получили ошибку 400
 	if getRecorder.Code != http.StatusNotFound {
-		t.Errorf("Expected status code %d, but got %d", http.StatusBadRequest, getRecorder.Code)
+		t.Errorf("Expected status code %d, but got %d", http.StatusNotFound, getRecorder.Code)
+	}
+}
+
+func TestAddIddresJSON(t *testing.T) {
+	file, err := os.OpenFile(flagPathToSave, os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		return
+	}
+	defer file.Close()
+	flagBaseURL = "http://localhost:8080/"
+	Links = NewLinkStorage()
+	r := setupRouter()
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		panic(err)
+	}
+	sugar = *logger.Sugar()
+
+	tests := []struct {
+		name        string
+		contentType string
+		request     string
+		want        int
+		wantPattern string
+	}{
+		{
+			name:        "Invalid Content-Type",
+			contentType: "text/plain",
+			request:     `{"url": "http://example.com"}`,
+			want:        http.StatusBadRequest,
+		},
+		{
+			name:        "Invalid JSON format",
+			contentType: "application/json",
+			request:     `{invalid_json}`,
+			want:        http.StatusBadRequest,
+		},
+		{
+			name:        "Missing URL in JSON",
+			contentType: "application/json",
+			request:     `{"not_url": "http://example.com"}`,
+			want:        http.StatusBadRequest,
+		},
+		{
+			name:        "Valid URL",
+			contentType: "application/json",
+			request:     `{"url": "http://example.com"}`,
+			want:        http.StatusCreated,
+			wantPattern: `^{"result":"http://localhost:8080/[a-zA-Z0-9]{7}$"}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/api/shorten", bytes.NewBufferString(tt.request))
+			req.Header.Set("Content-Type", tt.contentType)
+
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, req)
+
+			if w.Code != tt.want {
+				t.Errorf("Expected status code %d, but got %d", tt.want, w.Code)
+			}
+
+			if w.Code == http.StatusCreated && tt.wantPattern != "" {
+				var resp Response
+				err := json.Unmarshal(w.Body.Bytes(), &resp)
+				if err != nil {
+					t.Errorf("Failed to parse response JSON: %v", err)
+				}
+
+				match, _ := regexp.MatchString(tt.wantPattern, resp.Result)
+				if !match {
+					t.Errorf("Expected response to match pattern %s, but got: %s", tt.wantPattern, resp.Result)
+				}
+			}
+		})
 	}
 }

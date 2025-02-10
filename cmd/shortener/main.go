@@ -1,26 +1,33 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"compress/gzip"
+	"database/sql"
 	"encoding/json"
-	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
+	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
 	"net/url"
+	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 var (
 	mu            sync.Mutex
-	Links         = make(map[string]string)
+	Links         *LinkStorage
 	charset       = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	charsetLength = 7
 	sugar         zap.SugaredLogger
+	file          *os.File
 )
 
 type (
@@ -43,13 +50,35 @@ type (
 		gin.ResponseWriter
 		Writer io.Writer
 	}
+	shortenTextFile struct {
+		UUID        string `json:"uuid"`
+		ShortURL    string `json:"short_url"`
+		OriginalURL string `json:"original_url"`
+	}
+	LinkStorage struct {
+		links map[string]string
+	}
 )
 
-// Обертка для ResponseWriter
+func NewLinkStorage() *LinkStorage {
+	return &LinkStorage{links: map[string]string{}}
+}
+
+func (s *LinkStorage) Save(short string, original string) {
+	s.links[short] = original
+}
+
+func (s *LinkStorage) Get(short string) (string, bool) {
+	original, exists := s.links[short]
+	return original, exists
+}
+
+func (s *LinkStorage) Len() int {
+	return len(s.links)
+}
+
 func (w *loggingResponseWriter) Write(b []byte) (int, error) {
-	// Записываем данные в буфер
 	w.responseData.body.Write(b)
-	// Записываем данные в оригинальный ResponseWriter
 	size, err := w.ResponseWriter.Write(b)
 	w.responseData.size += size
 	return size, err
@@ -68,6 +97,15 @@ func (g *gzipResponseWriter) Write(data []byte) (int, error) {
 	return g.ResponseWriter.Write(data)
 }
 
+func (info *shortenTextFile) SaveURLInfo() error {
+	encoder := json.NewEncoder(file)
+	err := encoder.Encode(info)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func generateLink() string {
 	var builder strings.Builder
 	builder.Grow(charsetLength)
@@ -79,32 +117,35 @@ func generateLink() string {
 
 	return builder.String()
 }
-func AddLink(Link string) string {
+func AddLink(Link string) (string, error) {
 	for {
 		randomLink := generateLink()
 		mu.Lock()
-		if _, exist := Links[randomLink]; !exist {
-			Links[randomLink] = Link
+		if _, exist := Links.Get(randomLink); !exist {
+			Links.Save(randomLink, Link)
 			mu.Unlock()
-
-			return flagBaseURL + randomLink
+			uuid := strconv.Itoa(Links.Len() - 1)
+			url := shortenTextFile{UUID: uuid, ShortURL: randomLink, OriginalURL: Link}
+			err := url.SaveURLInfo()
+			if err != nil {
+				return "", err
+			}
+			return flagBaseURL + randomLink, nil
 		}
 	}
 }
 
 func GetLink(key string) (string, bool) {
-	if value, exist := Links[key]; exist {
+	if value, exist := Links.Get(key); exist {
 		return value, true
 	}
 	return "", false
 }
 
 func GetIddres(c *gin.Context) {
-	// Проверяем, что это POST-запрос и Content-Type - text/plain
 	path := c.Param("key")
 	link, isTrue := GetLink(path)
 	if isTrue {
-		// Automatically sets the Location header and performs the redirect
 		c.Redirect(http.StatusTemporaryRedirect, link)
 	} else {
 		c.JSON(http.StatusNotFound, nil)
@@ -175,12 +216,10 @@ func AddIddres(c *gin.Context) {
 		return
 	}
 
-	// Чтение тела запроса
 	body, err := io.ReadAll(c.Request.Body)
 	defer c.Request.Body.Close()
 	input := string(body)
 
-	// Проверка на ошибку при чтении или если тело пустое (пустой массив JSON)
 	if err != nil || len(body) == 0 {
 		c.JSON(http.StatusBadRequest, "Failed to read request body")
 		return
@@ -191,13 +230,22 @@ func AddIddres(c *gin.Context) {
 		return
 	}
 
-	// Если тело содержит пустой массив JSON "[]", также возвращаем ошибку
+	link, err := AddLink(parsedURL.String())
+	if err != nil {
+		sugar.Error(err)
+	}
 
-	// Генерация новой ссылки
-	link := AddLink(parsedURL.String())
-
-	// Отправка ответа
 	c.String(http.StatusCreated, link)
+}
+
+func ConnDB() error {
+	db, err := sql.Open("pgx", flagForDB)
+	if err != nil {
+		return err
+	}
+	db.Close()
+	return nil
+
 }
 
 func AddIddresJSON(c *gin.Context) {
@@ -205,7 +253,6 @@ func AddIddresJSON(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, "Content-Type must be application/json")
 		return
 	}
-	// Чтение тела запроса
 	var (
 		Inputurl Request
 		buf      bytes.Buffer
@@ -232,30 +279,77 @@ func AddIddresJSON(c *gin.Context) {
 		return
 	}
 
-	link := AddLink(parsedURL.String())
+	link, err := AddLink(parsedURL.String())
+
+	if err != nil {
+		sugar.Error(err)
+	}
+
 	_, err = json.Marshal(Response{Result: link})
 	if err != nil {
 		sugar.Infof("Error: %v", err)
 		c.JSON(http.StatusBadGateway, "Problem with service")
 	}
-	// Отправка ответа
 	c.JSON(http.StatusCreated, Response{Result: link})
+}
+
+func StatusConnDB(c *gin.Context) {
+	if err := ConnDB(); err != nil {
+		c.Status(http.StatusInternalServerError)
+	}
+	c.Status(http.StatusOK)
+}
+
+func loadLinksFromFile() error {
+	file, err := os.Open(flagPathToSave)
+	if err != nil {
+		return fmt.Errorf("failed to open file: %v", err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		var link shortenTextFile
+		err := json.Unmarshal(scanner.Bytes(), &link)
+		if err != nil {
+			return fmt.Errorf("failed to parse JSON: %v", err)
+		}
+		Links.Save(link.ShortURL, link.OriginalURL)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("failed to read file: %v", err)
+	}
+
+	return nil
 }
 
 func main() {
 	parseFlags()
+	Links = NewLinkStorage()
 	logger, err := zap.NewDevelopment()
 	if err != nil {
-		// вызываем панику, если ошибка
 		panic(err)
 	}
 	defer logger.Sync()
 	sugar = *logger.Sugar()
+	if err := loadLinksFromFile(); err != nil {
+		sugar.Error(err)
+	}
+
+	file, err = os.OpenFile(flagPathToSave, os.O_CREATE|os.O_RDWR, 0644)
+
+	if err != nil {
+		sugar.Errorf("failed to open file: %w", err)
+	}
+
 	server := gin.Default()
 	server.Use(WithLogging())
 	server.Use(gzipMiddleware())
 	server.POST("/", AddIddres)
 	server.GET("/:key", GetIddres)
 	server.POST("/api/shorten", AddIddresJSON)
+	server.GET("/ping", StatusConnDB)
 	server.Run(flagRunAddr)
+	file.Close()
 }
