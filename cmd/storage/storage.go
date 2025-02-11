@@ -7,7 +7,7 @@ import (
 
 type (
 	Storage interface {
-		Save(short string, original string) error
+		Save(correlationID string, short string, original string) error
 		Get(original string) (string, bool, error)
 		Len() int
 		Ping() error
@@ -24,7 +24,7 @@ func NewLinkStorage() *LinkStorage {
 	return &LinkStorage{links: map[string]string{}}
 }
 
-func (s *LinkStorage) Save(short string, original string) error {
+func (s *LinkStorage) Save(correlationID, short string, original string) error {
 	s.links[short] = original
 	return nil
 }
@@ -60,18 +60,19 @@ func NewPostgresStorage(dsn string) (*PostgresStorage, error) {
 
 func (s *PostgresStorage) createSchema() error {
 	query := `
-    CREATE TABLE IF NOT EXISTS urls (
-        id SERIAL PRIMARY KEY,
-        short_url TEXT UNIQUE NOT NULL,
-        original_url TEXT NOT NULL
-    );
+	CREATE TABLE IF NOT EXISTS urls (
+		id SERIAL PRIMARY KEY,
+		correlation_id TEXT UNIQUE NOT NULL,
+		short_url TEXT UNIQUE NOT NULL,
+		original_url TEXT NOT NULL
+	);
     `
 	_, err := s.db.Exec(query)
 	return err
 }
 
-func (s *PostgresStorage) Save(shortURL, originalURL string) error {
-	_, err := s.db.Exec("INSERT INTO urls (short_url, original_url) VALUES ($1, $2)", shortURL, originalURL)
+func (s *PostgresStorage) Save(correlationID, shortURL, originalURL string) error {
+	_, err := s.db.Exec("INSERT INTO urls (correlation_id, short_url, original_url) VALUES ($1, $2, $3)", correlationID, shortURL, originalURL)
 	return err
 }
 
@@ -98,7 +99,7 @@ func (s *PostgresStorage) Len() int {
 	var count int
 	err := s.db.QueryRow("SELECT COUNT(*) FROM urls").Scan(&count)
 	if err != nil {
-		return 0 // или обработай ошибку
+		return 0
 	}
 	return count
 }
