@@ -24,6 +24,7 @@ func setupRouter() *gin.Engine {
 	r.GET("/:key", GetIddres)
 	r.POST("/api/shorten", AddIddresJSON)
 	r.GET("/ping", StatusConnDB)
+	r.POST("/api/shorten/batch", Bath)
 	return r
 }
 func TestPostAddress(t *testing.T) {
@@ -178,4 +179,90 @@ func TestAddIddresJSON(t *testing.T) {
 		})
 	}
 
+}
+
+func TestBath(t *testing.T) {
+	file, err := os.OpenFile(flagPathToSave, os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		return
+	}
+	defer file.Close()
+	flagBaseURL = "http://localhost:8080/"
+	flagForDB = "host=localhost user=postgres password=example dbname=postgres sslmode=disable"
+	store = storage.NewLinkStorage()
+	r := setupRouter()
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		panic(err)
+	}
+	sugar = *logger.Sugar()
+	tests := []struct {
+		name        string
+		contentType string
+		request     string
+		want        int
+		wantPattern string
+	}{
+		{
+			name:        "Invalid Content-Type",
+			contentType: "text/plain",
+			request: `[
+					{
+						"correlation_id":"a1b2c3d4e5"
+						"original_url": "https://www.google.com/"
+					}
+				]`,
+			want: http.StatusBadRequest,
+		},
+		{
+			name:        "invalid JSON",
+			contentType: "application/json",
+			request:     `{not valid}`,
+			want:        http.StatusBadRequest,
+		},
+		{
+			name:        "Missing URL in JSON",
+			contentType: "application/json",
+			request:     `[{"not_url": "http://example.com"}]`,
+			want:        http.StatusBadRequest,
+		},
+		{
+			name:        "Good request",
+			contentType: "application/json",
+			request: `[
+    	{
+        "correlation_id": "abc123",
+        "original_url": "https://example.com/long-url-1"
+    	},
+    	{
+        "correlation_id": "def456",
+        "original_url": "https://example.com/long-url-2"
+    	}
+	]`,
+			want:        http.StatusCreated,
+			wantPattern: `^\[{"correlation_id":"[a-zA-Z0-9\-]+","short_url":"http://localhost:8080/[a-zA-Z0-9]{7}"}(,{"correlation_id":"[a-zA-Z0-9\-]+","short_url":"http://localhost:8080/[a-zA-Z0-9]{7}"})*\]$`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/api/shorten/batch", bytes.NewBufferString(tt.request))
+			req.Header.Set("Content-Type", tt.contentType)
+
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, req)
+			if w.Code != tt.want {
+				t.Errorf("Expected status code %d, but got %d", tt.want, w.Code)
+			}
+			if w.Code == http.StatusCreated && tt.wantPattern != "" {
+				if err != nil {
+					t.Errorf("Failed to parse response JSON: %v", err)
+				}
+
+				match, _ := regexp.MatchString(tt.wantPattern, w.Body.String())
+				if !match {
+					t.Errorf("Expected response to match pattern %s, but got: %s", tt.wantPattern, w.Body.String())
+				}
+			}
+		})
+	}
 }

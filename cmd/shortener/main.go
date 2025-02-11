@@ -57,6 +57,14 @@ type (
 		ShortURL    string `json:"short_url"`
 		OriginalURL string `json:"original_url"`
 	}
+	infoAboutURL struct {
+		CorrelationID string `json:"correlation_id"`
+		OriginalURL   string `json:"original_url"`
+	}
+	infoAboutURLResponse struct {
+		CorrelationID string `json:"correlation_id"`
+		ShortLink     string `json:"short_url"`
+	}
 )
 
 func (w *loggingResponseWriter) Write(b []byte) (int, error) {
@@ -99,14 +107,13 @@ func generateLink() string {
 
 	return builder.String()
 }
-func AddLink(Link string) (string, error) {
+func AddLink(Link string, uuid string) (string, error) {
 	for {
 		randomLink := generateLink()
 		mu.Lock()
 		if _, exist, _ := store.Get(randomLink); !exist {
-			store.Save(randomLink, Link)
+			store.Save(uuid, randomLink, Link)
 			mu.Unlock()
-			uuid := strconv.Itoa(store.Len() - 1)
 			url := shortenTextFile{UUID: uuid, ShortURL: randomLink, OriginalURL: Link}
 			err := url.SaveURLInfo()
 			if err != nil {
@@ -211,8 +218,8 @@ func AddIddres(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid URL"})
 		return
 	}
-
-	link, err := AddLink(parsedURL.String())
+	uuid := strconv.Itoa(store.Len() - 1)
+	link, err := AddLink(parsedURL.String(), uuid)
 	if err != nil {
 		sugar.Error(err)
 	}
@@ -250,8 +257,8 @@ func AddIddresJSON(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid URL"})
 		return
 	}
-
-	link, err := AddLink(parsedURL.String())
+	uuid := strconv.Itoa(store.Len() - 1)
+	link, err := AddLink(parsedURL.String(), uuid)
 
 	if err != nil {
 		sugar.Error(err)
@@ -263,6 +270,48 @@ func AddIddresJSON(c *gin.Context) {
 		c.JSON(http.StatusBadGateway, "Problem with service")
 	}
 	c.JSON(http.StatusCreated, Response{Result: link})
+}
+
+func Bath(c *gin.Context) {
+	if !strings.HasPrefix(c.Request.Header.Get("Content-Type"), "application/json") {
+		c.JSON(http.StatusBadRequest, "Content-Type must be application/json")
+		return
+	}
+	var (
+		buf      bytes.Buffer
+		links    []infoAboutURL
+		response []infoAboutURLResponse
+	)
+	_, err := buf.ReadFrom(c.Request.Body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, "Have info in body?")
+		return
+	}
+	err = json.Unmarshal(buf.Bytes(), &links)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, "JSON is not correctly")
+		return
+	}
+	fmt.Println(len(links))
+	for _, link := range links {
+		if link.CorrelationID == "" || link.OriginalURL == "" {
+			c.JSON(http.StatusBadRequest, "JSON is not correctly")
+			return
+		}
+		shorten, err := AddLink(link.OriginalURL, link.CorrelationID)
+		if err != nil {
+			sugar.Error("problem with save ")
+			c.JSON(http.StatusInternalServerError, "Problem service")
+		}
+		response = append(response, infoAboutURLResponse{CorrelationID: link.CorrelationID, ShortLink: shorten})
+	}
+
+	_, err = json.Marshal(response)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, "Problem service in Json")
+		return
+	}
+	c.JSON(http.StatusCreated, response)
 }
 
 func StatusConnDB(c *gin.Context) {
@@ -291,7 +340,9 @@ func loadLinksFromFile() error {
 		if err != nil {
 			return fmt.Errorf("failed to parse JSON: %v", err)
 		}
-		store.Save(link.ShortURL, link.OriginalURL)
+		uuid := strconv.Itoa(store.Len() - 1)
+
+		store.Save(uuid, link.ShortURL, link.OriginalURL)
 
 	}
 
@@ -300,6 +351,17 @@ func loadLinksFromFile() error {
 	}
 
 	return nil
+}
+
+func handlers(s *gin.Engine) *gin.Engine {
+	s.Use(WithLogging())
+	s.Use(gzipMiddleware())
+	s.POST("/", AddIddres)
+	s.GET("/:key", GetIddres)
+	s.POST("/api/shorten", AddIddresJSON)
+	s.GET("/ping", StatusConnDB)
+	s.POST("/api/shorten/batch", Bath)
+	return s
 }
 
 func main() {
@@ -330,12 +392,9 @@ func main() {
 	}
 
 	server := gin.Default()
-	server.Use(WithLogging())
-	server.Use(gzipMiddleware())
-	server.POST("/", AddIddres)
-	server.GET("/:key", GetIddres)
-	server.POST("/api/shorten", AddIddresJSON)
-	server.GET("/ping", StatusConnDB)
+
+	server = handlers(server)
+
 	server.Run(flagRunAddr)
 	file.Close()
 }
