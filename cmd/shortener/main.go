@@ -58,11 +58,11 @@ type (
 		OriginalURL string `json:"original_url"`
 	}
 	infoAboutURL struct {
-		CorrelationId string `json:"correlation_id"`
+		CorrelationID string `json:"correlation_id"`
 		OriginalURL   string `json:"original_url"`
 	}
 	infoAboutURLResponse struct {
-		CorrelationId string `json:"correlation_id"`
+		CorrelationID string `json:"correlation_id"`
 		ShortLink     string `json:"short_url"`
 	}
 )
@@ -294,16 +294,16 @@ func Bath(c *gin.Context) {
 	}
 	fmt.Println(len(links))
 	for _, link := range links {
-		if link.CorrelationId == "" || link.OriginalURL == "" {
+		if link.CorrelationID == "" || link.OriginalURL == "" {
 			c.JSON(http.StatusBadRequest, "JSON is not correctly")
 			return
 		}
-		shorten, err := AddLink(link.OriginalURL, link.CorrelationId)
+		shorten, err := AddLink(link.OriginalURL, link.CorrelationID)
 		if err != nil {
 			sugar.Error("problem with save ")
 			c.JSON(http.StatusInternalServerError, "Problem service")
 		}
-		response = append(response, infoAboutURLResponse{CorrelationId: link.CorrelationId, ShortLink: shorten})
+		response = append(response, infoAboutURLResponse{CorrelationID: link.CorrelationID, ShortLink: shorten})
 	}
 
 	_, err = json.Marshal(response)

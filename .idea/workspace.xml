@@ -6,10 +6,7 @@
   <component name="ChangeListManager">
     <list default="true" id="d800eb54-3226-4c54-9b10-e1095f33e545" name="Changes" comment="New commit">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmd/shortener/default.txt" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/shortener/default.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/cmd/shortener/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/shortener/main.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmd/shortener/main_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/shortener/main_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmd/storage/storage.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/storage/storage.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -72,7 +69,7 @@
     "RunOnceActivity.go.formatter.settings.were.checked": "true",
     "RunOnceActivity.go.migrated.go.modules.settings": "true",
     "RunOnceActivity.go.modules.go.list.on.any.changes.was.set": "true",
-    "git-widget-placeholder": "iter11",
+    "git-widget-placeholder": "iter12",
     "go.import.settings.migrated": "true",
     "go.sdk.automatically.set": "true",
     "last_opened_file_path": "/Users/skakunda/programming/YandexPrcticum/go/go-musthave-shortener-tpl",
