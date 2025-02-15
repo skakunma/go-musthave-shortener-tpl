@@ -23,6 +23,7 @@ func setupRouter() *gin.Engine {
 
 func TestPostIddres(t *testing.T) {
 	flagBaseURL = "http://localhost:8080/"
+	flagPathToSave = "default.txt"
 	Links = NewLinkStorage()
 	r := setupRouter()
 
@@ -62,6 +63,7 @@ func TestPostIddres(t *testing.T) {
 }
 
 func TestGetIddres(t *testing.T) {
+	flagPathToSave = "default.txt"
 	flagBaseURL = "http://localhost:8080/"
 	Links = NewLinkStorage()
 	r := setupRouter()
