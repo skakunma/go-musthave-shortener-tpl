@@ -63,10 +63,7 @@ func TestPostIddres(t *testing.T) {
 }
 
 func TestGetIddres(t *testing.T) {
-	r := gin.Default()
 	flagPathToSave = "default.txt"
-	r.GET("/:key", GetIddres) // Обработчик для GET-запросов
-	r.POST("/", AddIddres)
 	flagBaseURL = "http://localhost:8080/"
 	Links = NewLinkStorage()
 	r := setupRouter()
