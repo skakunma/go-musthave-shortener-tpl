@@ -239,8 +239,10 @@ func AddIddresJSON(c *gin.Context) {
 		c.JSON(http.StatusBadGateway, "Problem with service")
 	}
 	// Отправка ответа
-	c.JSON(http.StatusCreated, Response{Result: link})
+	c.JSON(http.StatusCreated, link)
 }
+
+
 
 func main() {
 	parseFlags()
@@ -253,7 +255,11 @@ func main() {
 	sugar = *logger.Sugar()
 	server := gin.Default()
 	server.Use(WithLogging())
+<<<<<<< HEAD
 	server.Use(gzipMiddleware())
+=======
+	server.Use()
+>>>>>>> iter8
 	server.POST("/", AddIddres)
 	server.GET("/:key", GetIddres)
 	server.POST("/api/shorten", AddIddresJSON)
