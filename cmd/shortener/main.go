@@ -22,10 +22,11 @@ import (
 
 var (
 	mu            sync.Mutex
-	Links         = make(map[string]string)
+	Links         *LinkStorage
 	charset       = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	charsetLength = 7
 	sugar         zap.SugaredLogger
+	file          *os.File
 )
 
 type (
@@ -52,14 +53,30 @@ type (
 		UUID        string `json:"uuid"`
 		ShortURL    string `json:"short_url"`
 		OriginalURL string `json:"original_url"`
+	LinkStorage struct {
+		links map[string]string
 	}
 )
 
-// Обертка для ResponseWriter
+func NewLinkStorage() *LinkStorage {
+	return &LinkStorage{links: map[string]string{}}
+}
+
+func (s *LinkStorage) Save(short string, original string) {
+	s.links[short] = original
+}
+
+func (s *LinkStorage) Get(short string) (string, bool) {
+	original, exists := s.links[short]
+	return original, exists
+}
+
+func (s *LinkStorage) Len() int {
+	return len(s.links)
+}
+
 func (w *loggingResponseWriter) Write(b []byte) (int, error) {
-	// Записываем данные в буфер
 	w.responseData.body.Write(b)
-	// Записываем данные в оригинальный ResponseWriter
 	size, err := w.ResponseWriter.Write(b)
 	w.responseData.size += size
 	return size, err
@@ -93,8 +110,8 @@ func AddLink(Link string) (string, error) {
 	for {
 		randomLink := generateLink()
 		mu.Lock()
-		if _, exist := Links[randomLink]; !exist {
-			Links[randomLink] = Link
+		if _, exist := Links.Get(randomLink); !exist {
+			Links.Save(randomLink, Link)
 			mu.Unlock()
 			uuid := strconv.Itoa(len(Links) - 1)
 			url := &shortenTextFile{UUID: uuid, ShortURL: randomLink, OriginalURL: Link}
@@ -108,18 +125,16 @@ func AddLink(Link string) (string, error) {
 }
 
 func GetLink(key string) (string, bool) {
-	if value, exist := Links[key]; exist {
+	if value, exist := Links.Get(key); exist {
 		return value, true
 	}
 	return "", false
 }
 
 func GetIddres(c *gin.Context) {
-	// Проверяем, что это POST-запрос и Content-Type - text/plain
 	path := c.Param("key")
 	link, isTrue := GetLink(path)
 	if isTrue {
-		// Automatically sets the Location header and performs the redirect
 		c.Redirect(http.StatusTemporaryRedirect, link)
 	} else {
 		c.JSON(http.StatusNotFound, nil)
@@ -215,12 +230,10 @@ func AddIddres(c *gin.Context) {
 		return
 	}
 
-	// Чтение тела запроса
 	body, err := io.ReadAll(c.Request.Body)
 	defer c.Request.Body.Close()
 	input := string(body)
 
-	// Проверка на ошибку при чтении или если тело пустое (пустой массив JSON)
 	if err != nil || len(body) == 0 {
 		c.JSON(http.StatusBadRequest, "Failed to read request body")
 		return
@@ -231,15 +244,11 @@ func AddIddres(c *gin.Context) {
 		return
 	}
 
-	// Если тело содержит пустой массив JSON "[]", также возвращаем ошибку
-
-	// Генерация новой ссылки
 	link, err := AddLink(parsedURL.String())
 	if err != nil {
 		sugar.Error(err)
 	}
 
-	// Отправка ответа
 	c.String(http.StatusCreated, link)
 }
 
@@ -248,7 +257,6 @@ func AddIddresJSON(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, "Content-Type must be application/json")
 		return
 	}
-	// Чтение тела запроса
 	var (
 		Inputurl Request
 		buf      bytes.Buffer
@@ -283,10 +291,9 @@ func AddIddresJSON(c *gin.Context) {
 
 	_, err = json.Marshal(Response{Result: link})
 	if err != nil {
-		sugar.Infof("Error: %v", err)
-		c.JSON(http.StatusBadGateway, "Problem with service")
+		sugar.Error(err)
 	}
-	// Отправка ответа
+
 	c.JSON(http.StatusCreated, Response{Result: link})
 }
 
@@ -321,6 +328,7 @@ func loadLinksFromFile() error {
 
 func main() {
 	parseFlags()
+	Links = NewLinkStorage()
 	logger, err := zap.NewDevelopment()
 	if err != nil {
 		panic(err)
@@ -337,4 +345,5 @@ func main() {
 	server.GET("/:key", GetIddres)
 	server.POST("/api/shorten", AddIddresJSON)
 	server.Run(flagRunAddr)
+	file.Close()
 }
