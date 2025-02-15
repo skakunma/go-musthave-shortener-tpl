@@ -4,23 +4,26 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
-	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 	"io"
 	"math/rand"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 var (
 	mu            sync.Mutex
-	Links         = make(map[string]string)
+	Links         *LinkStorage
 	charset       = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	charsetLength = 7
 	sugar         zap.SugaredLogger
+	file          *os.File
 )
 
 type (
@@ -43,13 +46,30 @@ type (
 		gin.ResponseWriter
 		Writer io.Writer
 	}
+	LinkStorage struct {
+		links map[string]string
+	}
 )
 
-// Обертка для ResponseWriter
+func NewLinkStorage() *LinkStorage {
+	return &LinkStorage{links: map[string]string{}}
+}
+
+func (s *LinkStorage) Save(short string, original string) {
+	s.links[short] = original
+}
+
+func (s *LinkStorage) Get(short string) (string, bool) {
+	original, exists := s.links[short]
+	return original, exists
+}
+
+func (s *LinkStorage) Len() int {
+	return len(s.links)
+}
+
 func (w *loggingResponseWriter) Write(b []byte) (int, error) {
-	// Записываем данные в буфер
 	w.responseData.body.Write(b)
-	// Записываем данные в оригинальный ResponseWriter
 	size, err := w.ResponseWriter.Write(b)
 	w.responseData.size += size
 	return size, err
@@ -79,32 +99,29 @@ func generateLink() string {
 
 	return builder.String()
 }
-func AddLink(Link string) string {
+func AddLink(Link string) (string, error) {
 	for {
 		randomLink := generateLink()
 		mu.Lock()
-		if _, exist := Links[randomLink]; !exist {
-			Links[randomLink] = Link
+		if _, exist := Links.Get(randomLink); !exist {
+			Links.Save(randomLink, Link)
 			mu.Unlock()
-
-			return flagBaseURL + randomLink
+			return flagBaseURL + randomLink, nil
 		}
 	}
 }
 
 func GetLink(key string) (string, bool) {
-	if value, exist := Links[key]; exist {
+	if value, exist := Links.Get(key); exist {
 		return value, true
 	}
 	return "", false
 }
 
 func GetIddres(c *gin.Context) {
-	// Проверяем, что это POST-запрос и Content-Type - text/plain
 	path := c.Param("key")
 	link, isTrue := GetLink(path)
 	if isTrue {
-		// Automatically sets the Location header and performs the redirect
 		c.Redirect(http.StatusTemporaryRedirect, link)
 	} else {
 		c.JSON(http.StatusNotFound, nil)
@@ -175,12 +192,10 @@ func AddIddres(c *gin.Context) {
 		return
 	}
 
-	// Чтение тела запроса
 	body, err := io.ReadAll(c.Request.Body)
 	defer c.Request.Body.Close()
 	input := string(body)
 
-	// Проверка на ошибку при чтении или если тело пустое (пустой массив JSON)
 	if err != nil || len(body) == 0 {
 		c.JSON(http.StatusBadRequest, "Failed to read request body")
 		return
@@ -191,12 +206,11 @@ func AddIddres(c *gin.Context) {
 		return
 	}
 
-	// Если тело содержит пустой массив JSON "[]", также возвращаем ошибку
+	link, err := AddLink(parsedURL.String())
+	if err != nil {
+		sugar.Error(err)
+	}
 
-	// Генерация новой ссылки
-	link := AddLink(parsedURL.String())
-
-	// Отправка ответа
 	c.String(http.StatusCreated, link)
 }
 
@@ -205,7 +219,6 @@ func AddIddresJSON(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, "Content-Type must be application/json")
 		return
 	}
-	// Чтение тела запроса
 	var (
 		Inputurl Request
 		buf      bytes.Buffer
@@ -232,36 +245,37 @@ func AddIddresJSON(c *gin.Context) {
 		return
 	}
 
-	link := AddLink(parsedURL.String())
+	link, err := AddLink(parsedURL.String())
+
+	if err != nil {
+		sugar.Error(err)
+	}
+
 	_, err = json.Marshal(Response{Result: link})
 	if err != nil {
 		sugar.Infof("Error: %v", err)
 		c.JSON(http.StatusBadGateway, "Problem with service")
 	}
-	// Отправка ответа
-	c.JSON(http.StatusCreated, link)
+
+	c.JSON(http.StatusCreated, Response{Result: link})
 }
-
-
 
 func main() {
 	parseFlags()
+	Links = NewLinkStorage()
 	logger, err := zap.NewDevelopment()
 	if err != nil {
-		// вызываем панику, если ошибка
 		panic(err)
 	}
 	defer logger.Sync()
 	sugar = *logger.Sugar()
+
 	server := gin.Default()
 	server.Use(WithLogging())
-<<<<<<< HEAD
 	server.Use(gzipMiddleware())
-=======
-	server.Use()
->>>>>>> iter8
 	server.POST("/", AddIddres)
 	server.GET("/:key", GetIddres)
 	server.POST("/api/shorten", AddIddresJSON)
 	server.Run(flagRunAddr)
+	file.Close()
 }
