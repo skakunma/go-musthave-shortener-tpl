@@ -316,7 +316,7 @@ func loadLinksFromFile() error {
 			return fmt.Errorf("failed to parse JSON: %v", err)
 		}
 		// Заполняем глобальную карту Links
-		Links[link.ShortURL] = link.OriginalURL
+		Links.Save(link.ShortURL,link.OriginalURL)
 	}
 
 	// Проверка на ошибки при чтении
