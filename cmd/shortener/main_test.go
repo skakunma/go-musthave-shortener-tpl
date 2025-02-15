@@ -106,7 +106,6 @@ func TestGetIddresNotFound(t *testing.T) {
 
 func TestAddIddresJSON(t *testing.T) {
 	flagBaseURL = "http://localhost:8080/"
-	Links = NewLinkStorage()
 	r := setupRouter()
 	logger, err := zap.NewDevelopment()
 	if err != nil {
@@ -144,7 +143,7 @@ func TestAddIddresJSON(t *testing.T) {
 			contentType: "application/json",
 			request:     `{"url": "http://example.com"}`,
 			want:        http.StatusCreated,
-			wantPattern: `^{"result":"http://localhost:8080/[a-zA-Z0-9]{7}$"}`,
+			wantPattern: `^{"result":"http://localhost:8080/[a-zA-Z0-9]{7}"}$`,
 		},
 	}
 
@@ -167,11 +166,12 @@ func TestAddIddresJSON(t *testing.T) {
 					t.Errorf("Failed to parse response JSON: %v", err)
 				}
 
-				match, _ := regexp.MatchString(tt.wantPattern, resp.Result)
+				match, _ := regexp.MatchString(tt.wantPattern, w.Body.String())
 				if !match {
-					t.Errorf("Expected response to match pattern %s, but got: %s", tt.wantPattern, resp.Result)
+					t.Errorf("Expected response to match pattern %s, but got: %s", tt.wantPattern, w.Body.String())
 				}
 			}
 		})
 	}
+
 }
