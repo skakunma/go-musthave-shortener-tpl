@@ -114,7 +114,7 @@ func AddLink(Link string) (string, error) {
 		if _, exist := Links.Get(randomLink); !exist {
 			Links.Save(randomLink, Link)
 			mu.Unlock()
-			uuid := strconv.Itoa(len(Links) - 1)
+			uuid := strconv.Itoa(Links.Len() - 1)
 			url := &shortenTextFile{UUID: uuid, ShortURL: randomLink, OriginalURL: Link}
 			err := url.SaveURLInfo()
 			if err != nil {
