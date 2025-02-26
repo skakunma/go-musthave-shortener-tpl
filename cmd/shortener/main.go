@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -104,7 +105,7 @@ func generateLink() string {
 	builder.Grow(charsetLength)
 
 	for i := 0; i < charsetLength; i++ {
-		indx := len(charset)
+		indx := rand.Intn(len(charset) - 1)
 		builder.WriteByte(charset[indx])
 	}
 
@@ -366,7 +367,7 @@ func handlers(s *gin.Engine) *gin.Engine {
 	s.Use(gzipMiddleware())
 	s.POST("/", AddIddres)
 	s.GET("/:key", GetIddres)
-	s.POST("/api/shorten", AddIddresJSON)
+	s.POST("/	api/shorten", AddIddresJSON)
 	s.GET("/ping", StatusConnDB)
 	s.POST("/api/shorten/batch", Bath)
 	return s
