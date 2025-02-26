@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -24,12 +23,16 @@ import (
 )
 
 var (
-	mu            sync.Mutex
-	charset       = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	charsetLength = 7
-	sugar         zap.SugaredLogger
-	file          *os.File
-	store         storage.Storage
+	mu             sync.Mutex
+	charset        = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	charsetLength  = 7
+	sugar          zap.SugaredLogger
+	file           *os.File
+	store          storage.Storage
+	flagRunAddr    string
+	flagBaseURL    string
+	flagPathToSave string
+	flagForDB      string
 )
 
 type (
@@ -101,7 +104,7 @@ func generateLink() string {
 	builder.Grow(charsetLength)
 
 	for i := 0; i < charsetLength; i++ {
-		indx := rand.Intn(51)
+		indx := len(charset)
 		builder.WriteByte(charset[indx])
 	}
 
@@ -222,6 +225,7 @@ func AddIddres(c *gin.Context) {
 	link, err := AddLink(parsedURL.String(), uuid)
 	if err != nil {
 		sugar.Error(err)
+		return
 	}
 
 	c.String(http.StatusCreated, link)
@@ -238,7 +242,7 @@ func AddIddresJSON(c *gin.Context) {
 	)
 	_, err := buf.ReadFrom(c.Request.Body)
 	if err != nil {
-		sugar.Infoln("Probblem with serilizator")
+		sugar.Infoln("Don't have Anything in body")
 		c.JSON(http.StatusBadRequest, "In body must be JSON like this")
 		return
 
@@ -262,12 +266,15 @@ func AddIddresJSON(c *gin.Context) {
 
 	if err != nil {
 		sugar.Error(err)
+		c.JSON(http.StatusBadRequest, "Error with add Link to storage")
+		return
 	}
 
 	_, err = json.Marshal(Response{Result: link})
 	if err != nil {
 		sugar.Infof("Error: %v", err)
 		c.JSON(http.StatusBadGateway, "Problem with service")
+		return
 	}
 	c.JSON(http.StatusCreated, Response{Result: link})
 }
@@ -302,6 +309,7 @@ func Bath(c *gin.Context) {
 		if err != nil {
 			sugar.Error("problem with save ")
 			c.JSON(http.StatusInternalServerError, "Problem service")
+			return
 		}
 		response = append(response, infoAboutURLResponse{CorrelationID: link.CorrelationID, ShortLink: shorten})
 	}
@@ -368,7 +376,7 @@ func main() {
 	parseFlags()
 	logger, err := zap.NewDevelopment()
 	if err != nil {
-		panic(err)
+		logger.Fatal(err.Error())
 	}
 	defer logger.Sync()
 	sugar = *logger.Sugar()
