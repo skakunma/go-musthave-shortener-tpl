@@ -367,7 +367,7 @@ func handlers(s *gin.Engine) *gin.Engine {
 	s.Use(gzipMiddleware())
 	s.POST("/", AddIddres)
 	s.GET("/:key", GetIddres)
-	s.POST("/	api/shorten", AddIddresJSON)
+	s.POST("/api/shorten", AddIddresJSON)
 	s.GET("/ping", StatusConnDB)
 	s.POST("/api/shorten/batch", Bath)
 	return s
