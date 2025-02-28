@@ -3,14 +3,16 @@ package storage
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 )
 
 type (
 	Storage interface {
-		Save(correlationID string, short string, original string) error
+		Save(correlationID string, short string, original string) (string, error)
 		Get(original string) (string, bool, error)
 		Len() int
 		Ping() error
+		GetFromOriginal(string) (string, error)
 	}
 	LinkStorage struct {
 		links map[string]string
@@ -20,13 +22,19 @@ type (
 	}
 )
 
+var ErrURLAlreadyExists = errors.New("URL уже существует в базе данных")
+
+func (s *LinkStorage) GetFromOriginal(original_url string) (string, error) {
+	return original_url, errors.New("Can't search from original")
+}
+
 func NewLinkStorage() *LinkStorage {
 	return &LinkStorage{links: map[string]string{}}
 }
 
-func (s *LinkStorage) Save(correlationID, short string, original string) error {
+func (s *LinkStorage) Save(correlationID string, short string, original string) (string, error) {
 	s.links[short] = original
-	return nil
+	return short, nil
 }
 
 func (s *LinkStorage) Get(short string) (string, bool, error) {
@@ -49,7 +57,6 @@ func NewPostgresStorage(dsn string) (*PostgresStorage, error) {
 
 	storage := &PostgresStorage{db: db}
 
-	// Создаём таблицу, если её нет
 	err = storage.createSchema()
 	if err != nil {
 		return nil, err
@@ -64,16 +71,38 @@ func (s *PostgresStorage) createSchema() error {
 		id SERIAL PRIMARY KEY,
 		correlation_id TEXT UNIQUE NOT NULL,
 		short_url TEXT UNIQUE NOT NULL,
-		original_url TEXT NOT NULL
+		original_url TEXT UNIQUE NOT NULL
 	);
     `
 	_, err := s.db.Exec(query)
 	return err
 }
 
-func (s *PostgresStorage) Save(correlationID, shortURL, originalURL string) error {
-	_, err := s.db.Exec("INSERT INTO urls (correlation_id, short_url, original_url) VALUES ($1, $2, $3)", correlationID, shortURL, originalURL)
-	return err
+func (s *PostgresStorage) Save(correlationID string, short string, original string) (string, error) {
+	var existingShortURL string
+
+	err := s.db.QueryRow(
+		`INSERT INTO urls (correlation_id, short_url, original_url) 
+         VALUES ($1, $2, $3) 
+         ON CONFLICT (original_url) DO NOTHING 
+         RETURNING short_url`,
+		correlationID, short, original,
+	).Scan(&existingShortURL)
+
+	// Если в `existingShortURL` пусто — значит, запись уже была, и нам нужно ее найти
+	if errors.Is(err, sql.ErrNoRows) || existingShortURL == "" {
+		existingShortURL, dbErr := s.GetFromOriginal(original)
+		if dbErr != nil {
+			return "", fmt.Errorf("ошибка получения существующего URL: %w", dbErr)
+		}
+		return existingShortURL, ErrURLAlreadyExists
+	}
+
+	if err != nil {
+		return "", fmt.Errorf("ошибка сохранения в БД: %w", err)
+	}
+
+	return existingShortURL, nil
 }
 
 func (s *PostgresStorage) Get(shortURL string) (string, bool, error) {
@@ -102,4 +131,14 @@ func (s *PostgresStorage) Len() int {
 		return 0
 	}
 	return count
+}
+
+func (s *PostgresStorage) GetFromOriginal(original_url string) (string, error) {
+	var shorten string
+	err := s.db.QueryRow("SELECT short_url FROM urls WHERE original_url=$1", original_url).Scan(&shorten)
+	if err != nil {
+		return "", err
+	}
+	link := shorten
+	return link, nil
 }

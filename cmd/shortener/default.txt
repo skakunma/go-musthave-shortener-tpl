@@ -1,6 +1,4 @@
-{"uuid":"3","short_url":"DpOIyqB","original_url":"https://google.com"}
-
-{"uuid":"-1","short_url":"MSQykBz","original_url":"http://example.com"}
-{"uuid":"abc123","short_url":"iylGsSv","original_url":"https://example.com/long-url-1"}
-{"uuid":"def456","short_url":"QyTNkpH","original_url":"https://example.com/long-url-2"}
-M","original_url":"https://example.com/long-url-2"}
+{"uuid":"3","short_url":"PzjfGAu","original_url":"http://example.com"}
+{"uuid":"4","short_url":"RfkMoEI","original_url":"http://example.com"}
+{"uuid":"5","short_url":"FBdaGMK","original_url":"http://example.com"}
+{"uuid":"0","short_url":"INODBlu","original_url":"https://google.com"}

@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -15,11 +16,11 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
 	"time"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
-
 	"github.com/gin-gonic/gin"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/zap"
 )
 
@@ -112,18 +113,27 @@ func generateLink() string {
 	return builder.String()
 }
 func AddLink(Link string, uuid string) (string, error) {
+	mu.Lock()
+	defer mu.Unlock()
+
 	for {
 		randomLink := generateLink()
-		mu.Lock()
+
 		if _, exist, _ := store.Get(randomLink); !exist {
-			store.Save(uuid, randomLink, Link)
-			mu.Unlock()
+			shorten_link, err := store.Save(uuid, randomLink, Link)
+			if err != nil {
+				if errors.Is(err, storage.ErrURLAlreadyExists) {
+					return flagBaseURL + shorten_link, err
+				}
+				return "", err
+			}
+
 			url := shortenTextFile{UUID: uuid, ShortURL: randomLink, OriginalURL: Link}
-			err := url.SaveURLInfo()
+			err = url.SaveURLInfo()
 			if err != nil {
 				return "", err
 			}
-			return flagBaseURL + randomLink, nil
+			return flagBaseURL + shorten_link, nil
 		}
 	}
 }
@@ -224,7 +234,18 @@ func AddIddres(c *gin.Context) {
 	}
 	uuid := strconv.Itoa(store.Len() - 1)
 	link, err := AddLink(parsedURL.String(), uuid)
+
 	if err != nil {
+		if errors.Is(err, storage.ErrURLAlreadyExists) {
+			_, err = json.Marshal(Response{Result: link})
+			if err != nil {
+				sugar.Infof("Error: %v", err)
+				c.JSON(http.StatusBadGateway, "Problem with service")
+				return
+			}
+			c.String(http.StatusConflict, link)
+			return
+		}
 		sugar.Error(err)
 		return
 	}
@@ -266,6 +287,16 @@ func AddIddresJSON(c *gin.Context) {
 	link, err := AddLink(parsedURL.String(), uuid)
 
 	if err != nil {
+		if errors.Is(err, storage.ErrURLAlreadyExists) {
+			_, err = json.Marshal(Response{Result: link})
+			if err != nil {
+				sugar.Infof("Error: %v", err)
+				c.JSON(http.StatusBadGateway, "Problem with service")
+				return
+			}
+			c.JSON(http.StatusConflict, Response{Result: link})
+			return
+		}
 		sugar.Error(err)
 		c.JSON(http.StatusBadRequest, "Error with add Link to storage")
 		return
