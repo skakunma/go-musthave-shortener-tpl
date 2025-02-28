@@ -1,4 +1,4 @@
-{"uuid":"3","short_url":"PzjfGAu","original_url":"http://example.com"}
-{"uuid":"4","short_url":"RfkMoEI","original_url":"http://example.com"}
+{"uuid":"3","short_url":"JpCXuUw","original_url":"http://example.com"}
+{"uuid":"4","short_url":"JkXkowf","original_url":"http://example.com"}
 {"uuid":"5","short_url":"FBdaGMK","original_url":"http://example.com"}
 {"uuid":"0","short_url":"INODBlu","original_url":"https://google.com"}

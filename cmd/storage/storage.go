@@ -24,8 +24,8 @@ type (
 
 var ErrURLAlreadyExists = errors.New("URL уже существует в базе данных")
 
-func (s *LinkStorage) GetFromOriginal(original_url string) (string, error) {
-	return original_url, errors.New("Can't search from original")
+func (s *LinkStorage) GetFromOriginal(originalURL string) (string, error) {
+	return originalURL, nil
 }
 
 func NewLinkStorage() *LinkStorage {
@@ -133,9 +133,9 @@ func (s *PostgresStorage) Len() int {
 	return count
 }
 
-func (s *PostgresStorage) GetFromOriginal(original_url string) (string, error) {
+func (s *PostgresStorage) GetFromOriginal(originalURL string) (string, error) {
 	var shorten string
-	err := s.db.QueryRow("SELECT short_url FROM urls WHERE original_url=$1", original_url).Scan(&shorten)
+	err := s.db.QueryRow("SELECT short_url FROM urls WHERE original_url=$1", originalURL).Scan(&shorten)
 	if err != nil {
 		return "", err
 	}
