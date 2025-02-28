@@ -120,10 +120,10 @@ func AddLink(Link string, uuid string) (string, error) {
 		randomLink := generateLink()
 
 		if _, exist, _ := store.Get(randomLink); !exist {
-			shorten_link, err := store.Save(uuid, randomLink, Link)
+			shortenLink, err := store.Save(uuid, randomLink, Link)
 			if err != nil {
 				if errors.Is(err, storage.ErrURLAlreadyExists) {
-					return flagBaseURL + shorten_link, err
+					return flagBaseURL + shortenLink, err
 				}
 				return "", err
 			}
@@ -133,7 +133,7 @@ func AddLink(Link string, uuid string) (string, error) {
 			if err != nil {
 				return "", err
 			}
-			return flagBaseURL + shorten_link, nil
+			return flagBaseURL + shortenLink, nil
 		}
 	}
 }
