@@ -15,5 +15,5 @@ func SetupRoutes(router *gin.Engine) {
 	router.POST("/api/shorten", AddAddressJSON)
 	router.GET("/ping", StatusConnDB)
 	router.POST("/api/shorten/batch", Batch)
-	return
+
 }
