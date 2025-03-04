@@ -1,1 +1,4 @@
-./idea
+.idea/
+.vscode/
+default.txt
+cmd/shorten/default.txt

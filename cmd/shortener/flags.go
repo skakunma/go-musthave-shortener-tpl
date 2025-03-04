@@ -1,33 +1,34 @@
 package main
 
 import (
+	"GoIncrease1/internal/config"
 	"flag"
 	"os"
 	"strings"
 )
 
 func parseFlags() {
-	flag.StringVar(&flagRunAddr, "a", ":8080", "address and port to run server")
-	flag.StringVar(&flagBaseURL, "b", "http://localhost:8080/", "base URL for shortened links")
-	flag.StringVar(&flagPathToSave, "f", "default.txt", "Path to save urls JSON")
-	flag.StringVar(&flagForDB, "d", "", "Postgresql info for connect")
+	flag.StringVar(&config.Cfg.FlagRunAddr, "a", ":8080", "address and port to run server")
+	flag.StringVar(&config.Cfg.FlagBaseURL, "b", "http://localhost:8080/", "base URL for shortened links")
+	flag.StringVar(&config.Cfg.FlagPathToSave, "f", "default.txt", "Path to save urls JSON")
+	flag.StringVar(&config.Cfg.FlagForDB, "d", "", "Postgresql info for connect")
 
 	flag.Parse()
 
 	if envRunAddr := os.Getenv("SERVER_ADDRESS"); envRunAddr != "" {
-		flagRunAddr = envRunAddr
+		config.Cfg.FlagRunAddr = envRunAddr
 	}
 	if envBaseURL := os.Getenv("BASE_URL"); envBaseURL != "" {
-		flagBaseURL = envBaseURL
+		config.Cfg.FlagBaseURL = envBaseURL
 	}
 	if envPathToSave := os.Getenv("FILE_STORAGE_PATH"); envPathToSave != "" {
-		flagPathToSave = envPathToSave
+		config.Cfg.FlagPathToSave = envPathToSave
 	}
 	if envDBtoSave := os.Getenv("DATABASE_DSN"); envDBtoSave != "" {
-		flagForDB = envDBtoSave
+		config.Cfg.FlagForDB = envDBtoSave
 	}
 
-	if !strings.HasSuffix(flagBaseURL, "/") {
-		flagBaseURL += "/"
+	if !strings.HasSuffix(config.Cfg.FlagBaseURL, "/") {
+		config.Cfg.FlagBaseURL += "/"
 	}
 }

@@ -6,6 +6,8 @@ import (
 	"fmt"
 )
 
+var ErrURLAlreadyExists = errors.New("URL уже существует в базе данных")
+
 type (
 	Storage interface {
 		Save(correlationID string, short string, original string) (string, error)
@@ -14,6 +16,7 @@ type (
 		Ping() error
 		GetFromOriginal(string) (string, error)
 	}
+
 	LinkStorage struct {
 		links map[string]string
 	}
@@ -22,13 +25,12 @@ type (
 	}
 )
 
-var ErrURLAlreadyExists = errors.New("URL уже существует в базе данных")
-
 func (s *LinkStorage) GetFromOriginal(originalURL string) (string, error) {
 	return originalURL, nil
 }
 
 func NewLinkStorage() *LinkStorage {
+
 	return &LinkStorage{links: map[string]string{}}
 }
 
