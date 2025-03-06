@@ -1,6 +1,6 @@
 module GoIncrease1
 
-go 1.22.12
+go 1.23.7
 
 require (
 	github.com/gin-gonic/gin v1.10.0
