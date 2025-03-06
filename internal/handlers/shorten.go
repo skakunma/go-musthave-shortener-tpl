@@ -87,7 +87,7 @@ func AddAddressJSON(c *gin.Context) {
 				c.JSON(http.StatusBadGateway, "Problem with service")
 				return
 			}
-			c.String(http.StatusConflict, link)
+			c.JSON(http.StatusConflict, link)
 			return
 		}
 		config.Cfg.Sugar.Error(err)
