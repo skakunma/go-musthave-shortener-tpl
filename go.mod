@@ -1,6 +1,6 @@
 module GoIncrease1
 
-go 1.22.12
+go 1.22.10
 
 require (
 	github.com/bytedance/sonic v1.12.6 // indirect
