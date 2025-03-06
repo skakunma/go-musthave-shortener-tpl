@@ -9,7 +9,8 @@ import (
 
 func GetAddress(c *gin.Context) {
 	path := c.Param("key")
-	link, found := shortener.GetLink(path)
+	ctx := c.Request.Context()
+	link, found := shortener.GetLink(ctx, path)
 	if found {
 		c.Redirect(http.StatusTemporaryRedirect, link)
 	} else {

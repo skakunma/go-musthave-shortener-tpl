@@ -8,7 +8,8 @@ import (
 )
 
 func StatusConnDB(c *gin.Context) {
-	if err := config.Cfg.Store.Ping(); err != nil {
+	ctx := c.Request.Context()
+	if err := config.Cfg.Store.Ping(ctx); err != nil {
 		c.Status(http.StatusInternalServerError)
 		return
 	}

@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -35,7 +36,7 @@ func (s *PostgresStorage) createSchema() error {
 	return err
 }
 
-func (s *PostgresStorage) Save(correlationID string, short string, original string) (string, error) {
+func (s *PostgresStorage) Save(ctx context.Context, correlationID string, short string, original string) (string, error) {
 	var existingShortURL string
 
 	err := s.db.QueryRow(
@@ -48,7 +49,7 @@ func (s *PostgresStorage) Save(correlationID string, short string, original stri
 
 	// Если в `existingShortURL` пусто — значит, запись уже была, и нам нужно ее найти
 	if errors.Is(err, sql.ErrNoRows) || existingShortURL == "" {
-		existingShortURL, dbErr := s.GetFromOriginal(original)
+		existingShortURL, dbErr := s.GetFromOriginal(ctx, original)
 		if dbErr != nil {
 			return "", fmt.Errorf("ошибка получения существующего URL: %w", dbErr)
 		}
@@ -62,9 +63,9 @@ func (s *PostgresStorage) Save(correlationID string, short string, original stri
 	return existingShortURL, nil
 }
 
-func (s *PostgresStorage) Get(shortURL string) (string, bool, error) {
+func (s *PostgresStorage) Get(ctx context.Context, shortURL string) (string, bool, error) {
 	var originalURL string
-	err := s.db.QueryRow("SELECT original_url FROM urls WHERE short_url=$1", shortURL).Scan(&originalURL)
+	err := s.db.QueryRowContext(ctx, "SELECT original_url FROM urls WHERE short_url=$1", shortURL).Scan(&originalURL)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return "", false, errors.New("url not found")
@@ -77,22 +78,23 @@ func (s *PostgresStorage) Get(shortURL string) (string, bool, error) {
 	return originalURL, true, nil
 }
 
-func (s *PostgresStorage) Ping() error {
-	return s.db.Ping()
+func (s *PostgresStorage) Ping(ctx context.Context) error {
+	return s.db.PingContext(ctx)
 }
 
-func (s *PostgresStorage) Len() int {
+func (s *PostgresStorage) Len(ctx context.Context) int {
 	var count int
-	err := s.db.QueryRow("SELECT COUNT(*) FROM urls").Scan(&count)
+	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM urls").Scan(&count)
 	if err != nil {
 		return 0
 	}
 	return count
 }
 
-func (s *PostgresStorage) GetFromOriginal(originalURL string) (string, error) {
+func (s *PostgresStorage) GetFromOriginal(ctx context.Context, originalURL string) (string, error) {
 	var shorten string
-	err := s.db.QueryRow("SELECT short_url FROM urls WHERE original_url=$1", originalURL).Scan(&shorten)
+	err := s.db.QueryRowContext(ctx, "SELECT short_url FROM urls WHERE original_url=$1", originalURL).Scan(&shorten)
+
 	if err != nil {
 		return "", err
 	}

@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 )
@@ -9,11 +10,11 @@ var ErrURLAlreadyExists = errors.New("URL уже существует в баз�
 
 type (
 	Storage interface {
-		Save(correlationID string, short string, original string) (string, error)
-		Get(original string) (string, bool, error)
-		Len() int
-		Ping() error
-		GetFromOriginal(string) (string, error)
+		Save(ctx context.Context, correlationID string, short string, original string) (string, error)
+		Get(ctx context.Context, original string) (string, bool, error)
+		Len(ctx context.Context) int
+		Ping(ctx context.Context) error
+		GetFromOriginal(ctx context.Context, original string) (string, error)
 	}
 
 	LinkStorage struct {

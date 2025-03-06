@@ -39,9 +39,9 @@ func AddAddress(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid URL"})
 		return
 	}
-
-	uuid := strconv.Itoa(config.Cfg.Store.Len() - 1)
-	link, err := shortener.AddLink(parsedURL.String(), uuid)
+	ctx := c.Request.Context()
+	uuid := strconv.Itoa(config.Cfg.Store.Len(ctx) - 1)
+	link, err := shortener.AddLink(ctx, parsedURL.String(), uuid)
 	if err != nil {
 		if errors.Is(err, storage.ErrURLAlreadyExists) {
 			_, err = json.Marshal(Response{Result: link})
@@ -76,9 +76,10 @@ func AddAddressJSON(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid URL"})
 		return
 	}
+	ctx := c.Request.Context()
 
-	uuid := strconv.Itoa(config.Cfg.Store.Len())
-	link, err := shortener.AddLink(parsedURL.String(), uuid)
+	uuid := strconv.Itoa(config.Cfg.Store.Len(ctx))
+	link, err := shortener.AddLink(ctx, parsedURL.String(), uuid)
 	if err != nil {
 		if errors.Is(err, storage.ErrURLAlreadyExists) {
 			_, err = json.Marshal(Response{Result: link})

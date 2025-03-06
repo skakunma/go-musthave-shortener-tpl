@@ -3,6 +3,7 @@ package config
 import (
 	"GoIncrease1/internal/storage"
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -34,7 +35,7 @@ type (
 	}
 )
 
-func LoadLinksFromFile() error {
+func LoadLinksFromFile(ctx context.Context) error {
 	file, err := os.Open(Cfg.FlagPathToSave)
 	if err != nil {
 		return fmt.Errorf("failed to open file: %v", err)
@@ -48,9 +49,9 @@ func LoadLinksFromFile() error {
 		if err != nil {
 			return fmt.Errorf("failed to parse JSON: %v", err)
 		}
-		uuid := strconv.Itoa(Cfg.Store.Len() - 1)
+		uuid := strconv.Itoa(Cfg.Store.Len(ctx) - 1)
 
-		Cfg.Store.Save(uuid, link.ShortURL, link.OriginalURL)
+		Cfg.Store.Save(ctx, uuid, link.ShortURL, link.OriginalURL)
 
 	}
 

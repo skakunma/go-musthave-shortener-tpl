@@ -42,9 +42,10 @@ func Batch(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, "JSON is not correctly")
 		return
 	}
+	ctx := c.Request.Context()
 
 	for _, link := range links {
-		shorten, err := shortener.AddLink(link.OriginalURL, link.CorrelationID)
+		shorten, err := shortener.AddLink(ctx, link.OriginalURL, link.CorrelationID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, "Problem service")
 			return
