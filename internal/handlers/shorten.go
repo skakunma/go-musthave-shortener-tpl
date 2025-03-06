@@ -3,6 +3,9 @@ package handlers
 import (
 	"GoIncrease1/internal/config"
 	"GoIncrease1/internal/shortener"
+	"GoIncrease1/internal/storage"
+	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/url"
@@ -40,7 +43,17 @@ func AddAddress(c *gin.Context) {
 	uuid := strconv.Itoa(config.Cfg.Store.Len() - 1)
 	link, err := shortener.AddLink(parsedURL.String(), uuid)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, "Error saving link")
+		if errors.Is(err, storage.ErrURLAlreadyExists) {
+			_, err = json.Marshal(Response{Result: link})
+			if err != nil {
+				config.Cfg.Sugar.Infof("Error: %v", err)
+				c.JSON(http.StatusBadGateway, "Problem with service")
+				return
+			}
+			c.String(http.StatusConflict, link)
+			return
+		}
+		config.Cfg.Sugar.Error(err)
 		return
 	}
 	c.String(http.StatusCreated, link)
@@ -67,7 +80,17 @@ func AddAddressJSON(c *gin.Context) {
 	uuid := strconv.Itoa(config.Cfg.Store.Len())
 	link, err := shortener.AddLink(parsedURL.String(), uuid)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, "Error saving link")
+		if errors.Is(err, storage.ErrURLAlreadyExists) {
+			_, err = json.Marshal(Response{Result: link})
+			if err != nil {
+				config.Cfg.Sugar.Infof("Error: %v", err)
+				c.JSON(http.StatusBadGateway, "Problem with service")
+				return
+			}
+			c.String(http.StatusConflict, link)
+			return
+		}
+		config.Cfg.Sugar.Error(err)
 		return
 	}
 	c.JSON(http.StatusCreated, Response{Result: link})
