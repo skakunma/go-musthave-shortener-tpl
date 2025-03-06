@@ -1,4 +1,28 @@
+# Ignore IDE configurations
 .idea/
 .vscode/
+
+# Ignore default.txt files
 default.txt
-cmd/shorten/default.txt
+
+# Ignore cmd/shortener/default.txt specifically
+cmd/shortener/default.txt
+
+# Ignore Go binary and build files
+*.exe
+*.out
+*.test
+
+# Ignore Go modules cache
+/go.sum
+/go.mod
+
+# Ignore system files (for macOS, Linux, etc.)
+.DS_Store
+Thumbs.db
+
+# Ignore log files
+*.log
+
+# Ignore vendor directory if present
+/vendor/
