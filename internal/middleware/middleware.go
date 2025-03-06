@@ -70,8 +70,8 @@ func GzipMiddleware() gin.HandlerFunc {
 			c.Request.Body = io.NopCloser(gzipReader)
 		}
 
-		if strings.Contains(c.Writer.Header().Get("Content-Type"), "application/json") ||
-			strings.Contains(c.Writer.Header().Get("Content-Type"), "text/html") {
+		if strings.Contains(c.GetHeader("Content-Type"), "application/json") ||
+			strings.Contains(c.GetHeader("Content-Type"), "text/html") {
 			c.Writer.Header().Set("Content-Encoding", "gzip")
 			gzipWriter := gzip.NewWriter(c.Writer)
 			defer gzipWriter.Close()
