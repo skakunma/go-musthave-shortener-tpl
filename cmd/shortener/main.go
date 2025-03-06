@@ -4,7 +4,9 @@ import (
 	"GoIncrease1/internal/config"
 	"GoIncrease1/internal/handlers"
 	"GoIncrease1/internal/storage"
+	"context"
 	"os"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -38,7 +40,10 @@ func main() {
 	} else {
 		config.Cfg.Store = storage.NewLinkStorage()
 	}
-	if err := config.LoadLinksFromFile(); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := config.LoadLinksFromFile(ctx); err != nil {
 		config.Cfg.Sugar.Error(err)
 	}
 
