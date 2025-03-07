@@ -45,6 +45,10 @@ func GetAddressFromUser(c *gin.Context) {
 		c.JSON(http.StatusBadGateway, err)
 		return
 	}
+	if len(result) == 0 {
+		c.JSON(http.StatusNoContent, "No conntent")
+		return
+	}
 	response := []userUrl{}
 	for key, value := range result {
 		response = append(response, userUrl{ShortenURL: config.Cfg.FlagBaseURL + key, OriginalURL: value})
