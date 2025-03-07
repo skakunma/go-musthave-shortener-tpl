@@ -8,7 +8,7 @@ import (
 
 var (
 	ErrURLAlreadyExists = errors.New("URL уже существует в базе данных")
-	ErrUserNotFound     = errors.New("Пользователь не найден")
+	ErrUserNotFound     = errors.New("пользователь не найден")
 )
 
 type (
