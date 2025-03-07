@@ -12,7 +12,7 @@ import (
 )
 
 type userUrl struct {
-	ShortenURL  string `json:"shorten_url"`
+	ShortenURL  string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
 
@@ -30,28 +30,37 @@ func GetAddress(c *gin.Context) {
 func GetAddressFromUser(c *gin.Context) {
 	claims, exist := c.Get("user")
 	if !exist {
-		c.JSON(http.StatusUnauthorized, "You are not autorizate")
+		c.JSON(http.StatusUnauthorized, "You are not authorized")
+		return
 	}
-	userClaims := claims.(*jwtAuth.Claims)
+
+	userClaims, ok := claims.(*jwtAuth.Claims)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, "Invalid token data")
+		return
+	}
 
 	ctx := c.Request.Context()
 
 	result, err := config.Cfg.Store.GetLinksByUserId(ctx, userClaims.UserID)
 	if err != nil {
 		if errors.Is(err, storage.ErrUserNotFound) {
-			c.JSON(http.StatusNotFound, "can't find user with that id")
+			c.JSON(http.StatusNoContent, []userUrl{})
 			return
 		}
-		c.JSON(http.StatusBadGateway, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
 	if len(result) == 0 {
 		c.JSON(http.StatusNoContent, []userUrl{})
 		return
 	}
-	response := []userUrl{}
+
+	response := make([]userUrl, 0, len(result))
 	for key, value := range result {
 		response = append(response, userUrl{ShortenURL: config.Cfg.FlagBaseURL + key, OriginalURL: value})
 	}
+
 	c.JSON(http.StatusOK, response)
 }
