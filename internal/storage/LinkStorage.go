@@ -16,14 +16,14 @@ func (s *LinkStorage) GetFromOriginal(ctx context.Context, originalURL string) (
 	return originalURL, nil
 }
 
-func (s *LinkStorage) Save(ctx context.Context, correlationID string, short string, original string, userId int) (string, error) {
+func (s *LinkStorage) Save(ctx context.Context, correlationID string, short string, original string, userID int) (string, error) {
 	select {
 	case <-ctx.Done():
 		return "", ctx.Err()
 	default:
 	}
 	s.links[short] = original
-	s.userLinks[userId] = append(s.userLinks[userId], short)
+	s.userLinks[userID] = append(s.userLinks[userID], short)
 	return short, nil
 }
 
@@ -55,24 +55,24 @@ func (s *LinkStorage) Ping(ctx context.Context) error {
 	return nil
 }
 
-func (s *LinkStorage) SaveUser(ctx context.Context, userId int) error {
+func (s *LinkStorage) SaveUser(ctx context.Context, userID int) error {
 	select {
 	case <-ctx.Done():
 		return nil
 	default:
 	}
-	s.users[userId] = true
-	s.userLinks[userId] = []string{}
+	s.users[userID] = true
+	s.userLinks[userID] = []string{}
 	return nil
 }
 
-func (s *LinkStorage) GetUserFromId(ctx context.Context, userId int) (bool, error) {
+func (s *LinkStorage) GetUserFromId(ctx context.Context, userID int) (bool, error) {
 	select {
 	case <-ctx.Done():
 		return false, nil
 	default:
 	}
-	if _, exist := s.users[userId]; !exist {
+	if _, exist := s.users[userID]; !exist {
 		return false, ErrUserNotFound
 	}
 	return true, nil
@@ -88,17 +88,17 @@ func (s *LinkStorage) GetNewUser(ctx context.Context) (int, error) {
 	return NewIndexUser, nil
 }
 
-func (s *LinkStorage) GetLinksByUserId(ctx context.Context, userId int) (map[string]string, error) {
+func (s *LinkStorage) GetLinksByUserId(ctx context.Context, userID int) (map[string]string, error) {
 	select {
 	case <-ctx.Done():
 		return nil, nil
 	default:
 	}
 	result := make(map[string]string)
-	if _, exist := s.userLinks[userId]; !exist {
+	if _, exist := s.userLinks[userID]; !exist {
 		return nil, ErrUserNotFound
 	}
-	for _, linkShort := range s.userLinks[userId] {
+	for _, linkShort := range s.userLinks[userID] {
 		if _, exist := s.links[linkShort]; !exist {
 			continue
 		}
