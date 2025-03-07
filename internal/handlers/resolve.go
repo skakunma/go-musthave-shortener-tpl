@@ -11,7 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type userUrl struct {
+type userURL struct {
 	ShortenURL  string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
@@ -45,7 +45,7 @@ func GetAddressFromUser(c *gin.Context) {
 	result, err := config.Cfg.Store.GetLinksByUserId(ctx, userClaims.UserID)
 	if err != nil {
 		if errors.Is(err, storage.ErrUserNotFound) {
-			c.JSON(http.StatusNoContent, []userUrl{})
+			c.JSON(http.StatusNoContent, []userURL{})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -53,13 +53,13 @@ func GetAddressFromUser(c *gin.Context) {
 	}
 
 	if len(result) == 0 {
-		c.JSON(http.StatusNoContent, []userUrl{})
+		c.JSON(http.StatusNoContent, []userURL{})
 		return
 	}
 
-	response := make([]userUrl, 0, len(result))
+	response := make([]userURL, 0, len(result))
 	for key, value := range result {
-		response = append(response, userUrl{ShortenURL: config.Cfg.FlagBaseURL + key, OriginalURL: value})
+		response = append(response, userURL{ShortenURL: config.Cfg.FlagBaseURL + key, OriginalURL: value})
 	}
 
 	c.JSON(http.StatusOK, response)

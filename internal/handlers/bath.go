@@ -45,7 +45,7 @@ func Batch(c *gin.Context) {
 	}
 	ctx := c.Request.Context()
 	claims, exist := c.Get("user")
-	if exist != true {
+	if !exist {
 		c.JSON(http.StatusUnauthorized, "You are not autorizate")
 	}
 	userClaims := claims.(*jwtAuth.Claims)
