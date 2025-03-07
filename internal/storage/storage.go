@@ -13,15 +13,15 @@ var (
 
 type (
 	Storage interface {
-		Save(ctx context.Context, correlationID string, short string, original string, userId int) (string, error)
+		Save(ctx context.Context, correlationID string, short string, original string, userID int) (string, error)
 		Get(ctx context.Context, original string) (string, bool, error)
 		Len(ctx context.Context) int
 		Ping(ctx context.Context) error
 		GetFromOriginal(ctx context.Context, original string) (string, error)
-		SaveUser(ctx context.Context, userId int) error
-		GetUserFromID(ctx context.Context, userId int) (bool, error)
+		SaveUser(ctx context.Context, userID int) error
+		GetUserFromID(ctx context.Context, userID int) (bool, error)
 		GetNewUser(ctx context.Context) (int, error)
-		GetLinksByUserID(ctx context.Context, userId int) (map[string]string, error)
+		GetLinksByUserID(ctx context.Context, userID int) (map[string]string, error)
 	}
 
 	LinkStorage struct {
