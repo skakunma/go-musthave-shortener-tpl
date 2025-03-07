@@ -19,9 +19,9 @@ type (
 		Ping(ctx context.Context) error
 		GetFromOriginal(ctx context.Context, original string) (string, error)
 		SaveUser(ctx context.Context, userId int) error
-		GetUserFromId(ctx context.Context, userId int) (bool, error)
+		GetUserFromID(ctx context.Context, userId int) (bool, error)
 		GetNewUser(ctx context.Context) (int, error)
-		GetLinksByUserId(ctx context.Context, userId int) (map[string]string, error)
+		GetLinksByUserID(ctx context.Context, userId int) (map[string]string, error)
 	}
 
 	LinkStorage struct {

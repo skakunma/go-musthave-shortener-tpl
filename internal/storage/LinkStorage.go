@@ -66,7 +66,7 @@ func (s *LinkStorage) SaveUser(ctx context.Context, userID int) error {
 	return nil
 }
 
-func (s *LinkStorage) GetUserFromId(ctx context.Context, userID int) (bool, error) {
+func (s *LinkStorage) GetUserFromID(ctx context.Context, userID int) (bool, error) {
 	select {
 	case <-ctx.Done():
 		return false, nil
@@ -88,7 +88,7 @@ func (s *LinkStorage) GetNewUser(ctx context.Context) (int, error) {
 	return NewIndexUser, nil
 }
 
-func (s *LinkStorage) GetLinksByUserId(ctx context.Context, userID int) (map[string]string, error) {
+func (s *LinkStorage) GetLinksByUserID(ctx context.Context, userID int) (map[string]string, error) {
 	select {
 	case <-ctx.Done():
 		return nil, nil

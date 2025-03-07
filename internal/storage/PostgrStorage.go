@@ -43,7 +43,7 @@ func (s *PostgresStorage) createSchema() error {
 	return err
 }
 
-func (s *PostgresStorage) Save(ctx context.Context, correlationID string, short string, original string, userId int) (string, error) {
+func (s *PostgresStorage) Save(ctx context.Context, correlationID string, short string, original string, userID int) (string, error) {
 	var existingShortURL string
 
 	err := s.db.QueryRow(
@@ -51,7 +51,7 @@ func (s *PostgresStorage) Save(ctx context.Context, correlationID string, short 
          VALUES ($1, $2, $3, $4) 
          ON CONFLICT (original_url) DO NOTHING 
          RETURNING short_url`,
-		correlationID, short, original, userId,
+		correlationID, short, original, userID,
 	).Scan(&existingShortURL)
 
 	// Если в `existingShortURL` пусто — значит, запись уже была, и нам нужно ее найти
@@ -109,16 +109,16 @@ func (s *PostgresStorage) GetFromOriginal(ctx context.Context, originalURL strin
 	return link, nil
 }
 
-func (s *PostgresStorage) SaveUser(ctx context.Context, userId int) error {
-	err := s.db.QueryRowContext(ctx, "INSERT INTO users (user_id) VALUES ($1)", userId)
+func (s *PostgresStorage) SaveUser(ctx context.Context, userID int) error {
+	err := s.db.QueryRowContext(ctx, "INSERT INTO users (user_id) VALUES ($1)", userID)
 	if err != nil {
 		return err.Err()
 	}
 	return nil
 }
 
-func (s *PostgresStorage) GetUserFromId(ctx context.Context, userId int) (bool, error) {
-	err := s.db.QueryRowContext(ctx, "SELECT id FROM users WHERE user_id = $1", userId).Scan(&userId)
+func (s *PostgresStorage) GetUserFromID(ctx context.Context, userID int) (bool, error) {
+	err := s.db.QueryRowContext(ctx, "SELECT id FROM users WHERE user_id = $1", userID).Scan(&userID)
 	if err != nil {
 		return false, err
 	}
@@ -134,8 +134,8 @@ func (s *PostgresStorage) GetNewUser(ctx context.Context) (int, error) {
 	return countUsers + 1, nil
 }
 
-func (s *PostgresStorage) GetLinksByUserId(ctx context.Context, userId int) (map[string]string, error) {
-	rows, err := s.db.QueryContext(ctx, "SELECT short_url, original_url FROM urls WHERE user_id = $1", userId)
+func (s *PostgresStorage) GetLinksByUserID(ctx context.Context, userID int) (map[string]string, error) {
+	rows, err := s.db.QueryContext(ctx, "SELECT short_url, original_url FROM urls WHERE user_id = $1", userID)
 	if err != nil {
 		return nil, err
 	}
