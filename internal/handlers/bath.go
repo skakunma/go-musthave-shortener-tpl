@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	jwtAuth "GoIncrease1/internal/jwt"
 	"GoIncrease1/internal/shortener"
 	"bytes"
 	"encoding/json"
@@ -43,9 +44,14 @@ func Batch(c *gin.Context) {
 		return
 	}
 	ctx := c.Request.Context()
+	claims, exist := c.Get("user")
+	if exist != true {
+		c.JSON(http.StatusUnauthorized, "You are not autorizate")
+	}
+	userClaims := claims.(*jwtAuth.Claims)
 
 	for _, link := range links {
-		shorten, err := shortener.AddLink(ctx, link.OriginalURL, link.CorrelationID)
+		shorten, err := shortener.AddLink(ctx, link.OriginalURL, link.CorrelationID, userClaims.UserID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, "Problem service")
 			return

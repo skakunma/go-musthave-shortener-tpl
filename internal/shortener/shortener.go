@@ -18,6 +18,7 @@ type (
 		UUID        string `json:"uuid"`
 		ShortURL    string `json:"short_url"`
 		OriginalURL string `json:"original_url"`
+		UserID      int    `json:user_id`
 	}
 )
 
@@ -41,7 +42,7 @@ func generateLink() string {
 
 	return builder.String()
 }
-func AddLink(ctx context.Context, Link string, uuid string) (string, error) {
+func AddLink(ctx context.Context, Link string, uuid string, userId int) (string, error) {
 	config.Cfg.Mu.Lock()
 	defer config.Cfg.Mu.Unlock()
 
@@ -49,7 +50,7 @@ func AddLink(ctx context.Context, Link string, uuid string) (string, error) {
 		randomLink := generateLink()
 
 		if _, exist, _ := config.Cfg.Store.Get(ctx, randomLink); !exist {
-			shortenLink, err := config.Cfg.Store.Save(ctx, uuid, randomLink, Link)
+			shortenLink, err := config.Cfg.Store.Save(ctx, uuid, randomLink, Link, userId)
 			if err != nil {
 				if errors.Is(err, storage.ErrURLAlreadyExists) {
 					return config.Cfg.FlagBaseURL + shortenLink, err
@@ -57,7 +58,7 @@ func AddLink(ctx context.Context, Link string, uuid string) (string, error) {
 				return "", err
 			}
 
-			url := ShortenTextFile{UUID: uuid, ShortURL: randomLink, OriginalURL: Link}
+			url := ShortenTextFile{UUID: uuid, ShortURL: randomLink, OriginalURL: Link, UserID: userId}
 			err = url.SaveURLInfo()
 			if err != nil {
 				return "", err

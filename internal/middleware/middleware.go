@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"GoIncrease1/internal/config"
+	jwtAuth "GoIncrease1/internal/jwt"
 	"bytes"
 	"compress/gzip"
 	"io"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v4"
 )
 
 type (
@@ -97,6 +99,56 @@ func GzipMiddleware() gin.HandlerFunc {
 	}
 }
 
+func AuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		jwtToken, err := c.Cookie("jwt")
+		if err != nil || jwtToken == "" {
+			cx := c.Request.Context()
+			newUser, err := config.Cfg.Store.GetNewUser(cx)
+			if err != nil {
+				config.Cfg.Sugar.Error("Ошибка создания нового пользователя:", err)
+				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Ошибка сервера"})
+				return
+			}
+
+			token, err := jwtAuth.BuildJWTString(newUser)
+			if err != nil {
+				config.Cfg.Sugar.Error("Ошибка генерации JWT:", err)
+				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Ошибка сервера"})
+				return
+			}
+
+			err = config.Cfg.Store.SaveUser(cx, newUser)
+
+			if err != nil {
+				config.Cfg.Sugar.Error("Ошибка сохранения пользовалтеля", err)
+				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Ошибка сервера"})
+				return
+			}
+
+			c.SetCookie("jwt", token, 3600, "/", "", true, true)
+			jwtToken = token
+		}
+
+		claims := &jwtAuth.Claims{}
+		token, err := jwt.ParseWithClaims(jwtToken, claims, func(t *jwt.Token) (interface{}, error) {
+			return []byte(jwtAuth.SECRET_KEY), nil
+		})
+		if err != nil {
+			config.Cfg.Sugar.Error("Ошибка парсинга JWT:", err)
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Недействительный токен"})
+			return
+		}
+
+		if !token.Valid {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Невалидный токен"})
+			return
+		}
+
+		c.Set("user", claims)
+		c.Next()
+	}
+}
 func (w *loggingResponseWriter) Write(b []byte) (int, error) {
 	w.responseData.body.Write(b)
 	size, err := w.ResponseWriter.Write(b)

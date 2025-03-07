@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"GoIncrease1/internal/config"
+	jwtAuth "GoIncrease1/internal/jwt"
 	"GoIncrease1/internal/shortener"
 	"GoIncrease1/internal/storage"
 	"encoding/json"
@@ -39,9 +40,15 @@ func AddAddress(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid URL"})
 		return
 	}
+	claims, exist := c.Get("user")
+	if exist != true {
+		c.JSON(http.StatusUnauthorized, "You are not autorizate")
+	}
+	userClaims := claims.(*jwtAuth.Claims)
+
 	ctx := c.Request.Context()
 	uuid := strconv.Itoa(config.Cfg.Store.Len(ctx) - 1)
-	link, err := shortener.AddLink(ctx, parsedURL.String(), uuid)
+	link, err := shortener.AddLink(ctx, parsedURL.String(), uuid, userClaims.UserID)
 	if err != nil {
 		if errors.Is(err, storage.ErrURLAlreadyExists) {
 			_, err = json.Marshal(Response{Result: link})
@@ -76,10 +83,17 @@ func AddAddressJSON(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid URL"})
 		return
 	}
+	claims, exist := c.Get("user")
+	if exist != true {
+		c.JSON(http.StatusUnauthorized, "You are not autorizate")
+	}
+	userClaims := claims.(*jwtAuth.Claims)
+
 	ctx := c.Request.Context()
 
 	uuid := strconv.Itoa(config.Cfg.Store.Len(ctx))
-	link, err := shortener.AddLink(ctx, parsedURL.String(), uuid)
+
+	link, err := shortener.AddLink(ctx, parsedURL.String(), uuid, userClaims.UserID)
 	if err != nil {
 		if errors.Is(err, storage.ErrURLAlreadyExists) {
 			_, err = json.Marshal(Response{Result: link})

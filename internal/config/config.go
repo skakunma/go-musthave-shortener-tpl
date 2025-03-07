@@ -20,6 +20,7 @@ type (
 		UUID        string `json:"uuid"`
 		ShortURL    string `json:"short_url"`
 		OriginalURL string `json:"original_url"`
+		UserId      int    `json:"user_id"`
 	}
 	Config struct {
 		Mu             sync.Mutex
@@ -50,8 +51,9 @@ func LoadLinksFromFile(ctx context.Context) error {
 			return fmt.Errorf("failed to parse JSON: %v", err)
 		}
 		uuid := strconv.Itoa(Cfg.Store.Len(ctx) - 1)
+		userId := link.UserId
 
-		Cfg.Store.Save(ctx, uuid, link.ShortURL, link.OriginalURL)
+		Cfg.Store.Save(ctx, uuid, link.ShortURL, link.OriginalURL, userId)
 
 	}
 
