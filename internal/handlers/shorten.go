@@ -63,7 +63,7 @@ func AddAddress(c *gin.Context) {
 		config.Cfg.Sugar.Error(err)
 		return
 	}
-	c.String(http.StatusCreated, link)
+	c.String(201, link)
 }
 
 func AddAddressJSON(c *gin.Context) {
