@@ -42,7 +42,7 @@ func GetAddressFromUser(c *gin.Context) {
 
 	ctx := c.Request.Context()
 
-	result, err := config.Cfg.Store.GetLinksByUserId(ctx, userClaims.UserID)
+	result, err := config.Cfg.Store.GetLinksByUserID(ctx, userClaims.UserID)
 	if err != nil {
 		if errors.Is(err, storage.ErrUserNotFound) {
 			c.JSON(http.StatusNoContent, []userURL{})
