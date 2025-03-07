@@ -47,7 +47,7 @@ func GetAddressFromUser(c *gin.Context) {
 	}
 	response := []userUrl{}
 	for key, value := range result {
-		response = append(response, userUrl{ShortenURL: key, OriginalURL: value})
+		response = append(response, userUrl{ShortenURL: config.Cfg.FlagBaseURL + key, OriginalURL: value})
 	}
 	c.JSON(http.StatusOK, response)
 }
