@@ -126,7 +126,6 @@ func AuthMiddleware() gin.HandlerFunc {
 				return
 			}
 
-			c.SetCookie("jwt", token, 3600, "/", "", true, true)
 			jwtToken = token
 		}
 
@@ -144,7 +143,7 @@ func AuthMiddleware() gin.HandlerFunc {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Невалидный токен"})
 			return
 		}
-
+		c.SetCookie("jwt", jwtToken, 3600, "/", "", false, false)
 		c.Set("user", claims)
 		c.Next()
 	}
