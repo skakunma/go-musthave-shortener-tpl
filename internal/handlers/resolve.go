@@ -29,7 +29,7 @@ func GetAddress(c *gin.Context) {
 
 func GetAddressFromUser(c *gin.Context) {
 	claims, exist := c.Get("user")
-	if exist != true {
+	if !exist {
 		c.JSON(http.StatusUnauthorized, "You are not autorizate")
 	}
 	userClaims := claims.(*jwtAuth.Claims)
@@ -46,7 +46,7 @@ func GetAddressFromUser(c *gin.Context) {
 		return
 	}
 	if len(result) == 0 {
-		c.JSON(http.StatusNoContent, "No conntent")
+		c.JSON(http.StatusNoContent, []userUrl{})
 		return
 	}
 	response := []userUrl{}

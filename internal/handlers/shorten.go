@@ -41,13 +41,13 @@ func AddAddress(c *gin.Context) {
 		return
 	}
 	claims, exist := c.Get("user")
-	if exist == false {
+	if !exist {
 		c.JSON(http.StatusUnauthorized, "You are not autorizate")
 	}
 	userClaims := claims.(*jwtAuth.Claims)
 
 	ctx := c.Request.Context()
-	uuid := strconv.Itoa(config.Cfg.Store.Len(ctx) - 1)
+	uuid := strconv.Itoa(config.Cfg.Store.Len(ctx) + 1)
 	link, err := shortener.AddLink(ctx, parsedURL.String(), uuid, userClaims.UserID)
 	if err != nil {
 		if errors.Is(err, storage.ErrURLAlreadyExists) {
@@ -63,7 +63,7 @@ func AddAddress(c *gin.Context) {
 		config.Cfg.Sugar.Error(err)
 		return
 	}
-	c.String(201, link)
+	c.String(http.StatusCreated, link)
 }
 
 func AddAddressJSON(c *gin.Context) {
@@ -84,7 +84,7 @@ func AddAddressJSON(c *gin.Context) {
 		return
 	}
 	claims, exist := c.Get("user")
-	if exist != true {
+	if !exist {
 		c.JSON(http.StatusUnauthorized, "You are not autorizate")
 	}
 	userClaims := claims.(*jwtAuth.Claims)
