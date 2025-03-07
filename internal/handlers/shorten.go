@@ -41,7 +41,7 @@ func AddAddress(c *gin.Context) {
 		return
 	}
 	claims, exist := c.Get("user")
-	if exist != true {
+	if exist == false {
 		c.JSON(http.StatusUnauthorized, "You are not autorizate")
 	}
 	userClaims := claims.(*jwtAuth.Claims)
