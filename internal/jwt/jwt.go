@@ -1,4 +1,4 @@
-package jwtAuth
+package jwtauth
 
 import (
 	"time"
@@ -12,19 +12,19 @@ type Claims struct {
 }
 
 const (
-	TOKEN_EXP  = time.Hour * 3
-	SECRET_KEY = "supersecretkey"
+	TokenEXP  = time.Hour * 3
+	SecretKEY = "supersecretkey"
 )
 
 func BuildJWTString(userId int) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(TOKEN_EXP)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(TokenEXP)),
 		},
 		UserID: userId,
 	})
 
-	tokenString, err := token.SignedString([]byte(SECRET_KEY))
+	tokenString, err := token.SignedString([]byte(SecretKEY))
 	if err != nil {
 		return "", err
 	}

@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"GoIncrease1/internal/config"
-	jwtAuth "GoIncrease1/internal/jwt"
+	jwtauth "GoIncrease1/internal/jwt"
 	"bytes"
 	"compress/gzip"
 	"io"
@@ -111,7 +111,7 @@ func AuthMiddleware() gin.HandlerFunc {
 				return
 			}
 
-			token, err := jwtAuth.BuildJWTString(newUser)
+			token, err := jwtauth.BuildJWTString(newUser)
 			if err != nil {
 				config.Cfg.Sugar.Error("Ошибка генерации JWT:", err)
 				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Ошибка сервера"})
@@ -129,9 +129,9 @@ func AuthMiddleware() gin.HandlerFunc {
 			jwtToken = token
 		}
 
-		claims := &jwtAuth.Claims{}
+		claims := &jwtauth.Claims{}
 		token, err := jwt.ParseWithClaims(jwtToken, claims, func(t *jwt.Token) (interface{}, error) {
-			return []byte(jwtAuth.SECRET_KEY), nil
+			return []byte(jwtauth.SecretKEY), nil
 		})
 		if err != nil {
 			config.Cfg.Sugar.Error("Ошибка парсинга JWT:", err)
