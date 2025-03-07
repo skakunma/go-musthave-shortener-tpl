@@ -91,7 +91,7 @@ func AddAddressJSON(c *gin.Context) {
 
 	ctx := c.Request.Context()
 
-	uuid := strconv.Itoa(config.Cfg.Store.Len(ctx))
+	uuid := strconv.Itoa(config.Cfg.Store.Len(ctx) + 1)
 
 	link, err := shortener.AddLink(ctx, parsedURL.String(), uuid, userClaims.UserID)
 	if err != nil {
