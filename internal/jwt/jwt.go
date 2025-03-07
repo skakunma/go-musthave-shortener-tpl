@@ -16,12 +16,12 @@ const (
 	SecretKEY = "supersecretkey"
 )
 
-func BuildJWTString(userId int) (string, error) {
+func BuildJWTString(userID int) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(TokenEXP)),
 		},
-		UserID: userId,
+		UserID: userID,
 	})
 
 	tokenString, err := token.SignedString([]byte(SecretKEY))
