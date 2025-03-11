@@ -90,15 +90,14 @@ func LoadConfig(ctx context.Context) (*Config, error) {
 		cfg.Store = storage.NewLinkStorage()
 	}
 
-	// Загружаем ссылки из файла
-	if err := LoadLinksFromFile(ctx, cfg); err != nil {
-		cfg.Sugar.Error("Ошибка загрузки ссылок:", err)
-	}
-
 	// Открываем файл для записи
 	cfg.File, err = os.OpenFile(cfg.FlagPathToSave, os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
 		cfg.Sugar.Errorf("Ошибка открытия файла: %v", err)
+	}
+
+	if err := LoadLinksFromFile(ctx, cfg); err != nil {
+		cfg.Sugar.Error("Ошибка загрузки ссылок:", err)
 	}
 
 	return cfg, nil
