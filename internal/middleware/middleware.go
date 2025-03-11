@@ -1,14 +1,16 @@
 package middleware
 
 import (
-	"GoIncrease1/internal/config"
-	jwtauth "GoIncrease1/internal/jwt"
 	"bytes"
 	"compress/gzip"
 	"io"
 	"net/http"
 	"strings"
 	"time"
+
+	jwtauth "github.com/skakunma/go-musthave-shortener-tpl/internal/jwt"
+
+	"github.com/skakunma/go-musthave-shortener-tpl/internal/config"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
@@ -30,7 +32,7 @@ type (
 	}
 )
 
-func WithLogging() gin.HandlerFunc {
+func WithLogging(cfg *config.Config) gin.HandlerFunc {
 	logFn := func(c *gin.Context) {
 		start := time.Now()
 		uri := c.Request.RequestURI
@@ -47,7 +49,7 @@ func WithLogging() gin.HandlerFunc {
 		c.Writer = lw
 		c.Next()
 		duration := time.Since(start)
-		config.Cfg.Sugar.Infoln(
+		cfg.Sugar.Infoln(
 			"uri", uri,
 			"method", method,
 			"duration", duration,
@@ -99,29 +101,29 @@ func GzipMiddleware() gin.HandlerFunc {
 	}
 }
 
-func AuthMiddleware() gin.HandlerFunc {
+func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		jwtToken, err := c.Cookie("jwt")
 		if err != nil || jwtToken == "" {
 			cx := c.Request.Context()
-			newUser, err := config.Cfg.Store.GetNewUser(cx)
+			newUser, err := cfg.Store.GetNewUser(cx)
 			if err != nil {
-				config.Cfg.Sugar.Error("Ошибка создания нового пользователя:", err)
+				cfg.Sugar.Error("Ошибка создания нового пользователя:", err)
 				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Ошибка сервера"})
 				return
 			}
 
 			token, err := jwtauth.BuildJWTString(newUser)
 			if err != nil {
-				config.Cfg.Sugar.Error("Ошибка генерации JWT:", err)
+				cfg.Sugar.Error("Ошибка генерации JWT:", err)
 				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Ошибка сервера"})
 				return
 			}
 
-			err = config.Cfg.Store.SaveUser(cx, newUser)
+			err = cfg.Store.SaveUser(cx, newUser)
 
 			if err != nil {
-				config.Cfg.Sugar.Error("Ошибка сохранения пользовалтеля", err)
+				cfg.Sugar.Error("Ошибка сохранения пользовалтеля", err)
 				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Ошибка сервера"})
 				return
 			}
@@ -134,7 +136,7 @@ func AuthMiddleware() gin.HandlerFunc {
 			return []byte(jwtauth.SecretKEY), nil
 		})
 		if err != nil {
-			config.Cfg.Sugar.Error("Ошибка парсинга JWT:", err)
+			cfg.Sugar.Error("Ошибка парсинга JWT:", err)
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Недействительный токен"})
 			return
 		}

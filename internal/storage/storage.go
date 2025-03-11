@@ -11,6 +11,12 @@ var (
 	ErrUserNotFound     = errors.New("пользователь не найден")
 )
 
+type InfoAboutURL struct {
+	CorrelationID string `json:"correlation_id"`
+	OriginalURL   string `json:"original_url"`
+	ShortLink     string
+}
+
 type (
 	Storage interface {
 		Save(ctx context.Context, correlationID string, short string, original string, userID int) (string, error)
@@ -22,6 +28,7 @@ type (
 		GetUserFromID(ctx context.Context, userID int) (bool, error)
 		GetNewUser(ctx context.Context) (int, error)
 		GetLinksByUserID(ctx context.Context, userID int) (map[string]string, error)
+		AddLinksBatch(ctx context.Context, links []InfoAboutURL, userID int) ([]string, error)
 	}
 
 	LinkStorage struct {

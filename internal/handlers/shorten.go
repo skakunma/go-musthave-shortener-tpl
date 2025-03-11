@@ -1,10 +1,6 @@
 package handlers
 
 import (
-	"GoIncrease1/internal/config"
-	jwtAuth "GoIncrease1/internal/jwt"
-	"GoIncrease1/internal/shortener"
-	"GoIncrease1/internal/storage"
 	"encoding/json"
 	"errors"
 	"io"
@@ -12,6 +8,11 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/skakunma/go-musthave-shortener-tpl/internal/config"
+	jwtAuth "github.com/skakunma/go-musthave-shortener-tpl/internal/jwt"
+	"github.com/skakunma/go-musthave-shortener-tpl/internal/shortener"
+	"github.com/skakunma/go-musthave-shortener-tpl/internal/storage"
 
 	"github.com/gin-gonic/gin"
 )
@@ -24,7 +25,7 @@ type Response struct {
 	Result string `json:"result"`
 }
 
-func AddAddress(c *gin.Context) {
+func AddAddress(c *gin.Context, cfg *config.Config) {
 	if !strings.HasPrefix(c.Request.Header.Get("Content-Type"), "text/plain") &&
 		!strings.HasPrefix(c.Request.Header.Get("Content-Type"), "application/x-gzip") {
 		c.JSON(http.StatusBadRequest, "Content-Type must be text/plain")
@@ -47,26 +48,26 @@ func AddAddress(c *gin.Context) {
 	userClaims := claims.(*jwtAuth.Claims)
 
 	ctx := c.Request.Context()
-	uuid := strconv.Itoa(config.Cfg.Store.Len(ctx) + 1)
-	link, err := shortener.AddLink(ctx, parsedURL.String(), uuid, userClaims.UserID)
+	uuid := strconv.Itoa(cfg.Store.Len(ctx) + 1)
+	link, err := shortener.AddLink(ctx, cfg, parsedURL.String(), uuid, userClaims.UserID)
 	if err != nil {
 		if errors.Is(err, storage.ErrURLAlreadyExists) {
 			_, err = json.Marshal(Response{Result: link})
 			if err != nil {
-				config.Cfg.Sugar.Infof("Error: %v", err)
+				cfg.Sugar.Infof("Error: %v", err)
 				c.JSON(http.StatusBadGateway, "Problem with service")
 				return
 			}
 			c.String(http.StatusConflict, link)
 			return
 		}
-		config.Cfg.Sugar.Error(err)
+		cfg.Sugar.Error(err)
 		return
 	}
 	c.String(http.StatusCreated, link)
 }
 
-func AddAddressJSON(c *gin.Context) {
+func AddAddressJSON(c *gin.Context, cfg *config.Config) {
 	if !strings.HasPrefix(c.Request.Header.Get("Content-Type"), "application/json") {
 		c.JSON(http.StatusBadRequest, "Content-Type must be application/json")
 		return
@@ -91,21 +92,21 @@ func AddAddressJSON(c *gin.Context) {
 
 	ctx := c.Request.Context()
 
-	uuid := strconv.Itoa(config.Cfg.Store.Len(ctx) + 1)
+	uuid := strconv.Itoa(cfg.Store.Len(ctx) + 1)
 
-	link, err := shortener.AddLink(ctx, parsedURL.String(), uuid, userClaims.UserID)
+	link, err := shortener.AddLink(ctx, cfg, parsedURL.String(), uuid, userClaims.UserID)
 	if err != nil {
 		if errors.Is(err, storage.ErrURLAlreadyExists) {
 			_, err = json.Marshal(Response{Result: link})
 			if err != nil {
-				config.Cfg.Sugar.Infof("Error: %v", err)
+				cfg.Sugar.Infof("Error: %v", err)
 				c.JSON(http.StatusBadGateway, "Problem with service")
 				return
 			}
 			c.JSON(http.StatusConflict, Response{Result: link})
 			return
 		}
-		config.Cfg.Sugar.Error(err)
+		cfg.Sugar.Error(err)
 		c.JSON(http.StatusBadRequest, "Error with add Link to storage")
 		return
 	}

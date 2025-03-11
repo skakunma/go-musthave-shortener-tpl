@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 )
 
 func NewPostgresStorage(dsn string) (*PostgresStorage, error) {
@@ -156,4 +157,40 @@ func (s *PostgresStorage) GetLinksByUserID(ctx context.Context, userID int) (map
 	}
 
 	return links, nil
+}
+func (s *PostgresStorage) AddLinksBatch(ctx context.Context, links []InfoAboutURL, userID int) ([]string, error) {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	values := []interface{}{}
+	placeholders := []string{}
+	shortLinks := []string{}
+
+	for i, link := range links {
+		shortLink := link.ShortLink
+
+		shortLinks = append(shortLinks, shortLink)
+
+		values = append(values, shortLink, link.OriginalURL, link.CorrelationID, userID)
+		placeholders = append(placeholders, fmt.Sprintf("($%d, $%d, $%d, $%d)", i*4+1, i*4+2, i*4+3, i*4+4))
+	}
+
+	query := fmt.Sprintf(
+		"INSERT INTO links (short_link, original_url, correlation_id, user_id) VALUES %s",
+		strings.Join(placeholders, ","),
+	)
+
+	_, err = tx.ExecContext(ctx, query, values...)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return shortLinks, nil
 }

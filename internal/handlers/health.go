@@ -1,15 +1,16 @@
 package handlers
 
 import (
-	"GoIncrease1/internal/config"
 	"net/http"
+
+	"github.com/skakunma/go-musthave-shortener-tpl/internal/config"
 
 	"github.com/gin-gonic/gin"
 )
 
-func StatusConnDB(c *gin.Context) {
+func StatusConnDB(c *gin.Context, cfg *config.Config) {
 	ctx := c.Request.Context()
-	if err := config.Cfg.Store.Ping(ctx); err != nil {
+	if err := cfg.Store.Ping(ctx); err != nil {
 		c.Status(http.StatusInternalServerError)
 		return
 	}

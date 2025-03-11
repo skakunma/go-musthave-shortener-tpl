@@ -13,9 +13,6 @@ cmd/shortener/default.txt
 *.out
 *.test
 
-# Ignore Go modules cache
-/go.sum
-/go.mod
 
 # Ignore system files (for macOS, Linux, etc.)
 .DS_Store

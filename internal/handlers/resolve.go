@@ -1,12 +1,13 @@
 package handlers
 
 import (
-	"GoIncrease1/internal/config"
-	jwtAuth "GoIncrease1/internal/jwt"
-	"GoIncrease1/internal/shortener"
-	"GoIncrease1/internal/storage"
 	"errors"
 	"net/http"
+
+	"github.com/skakunma/go-musthave-shortener-tpl/internal/config"
+	jwtAuth "github.com/skakunma/go-musthave-shortener-tpl/internal/jwt"
+	"github.com/skakunma/go-musthave-shortener-tpl/internal/shortener"
+	"github.com/skakunma/go-musthave-shortener-tpl/internal/storage"
 
 	"github.com/gin-gonic/gin"
 )
@@ -16,10 +17,10 @@ type userURL struct {
 	OriginalURL string `json:"original_url"`
 }
 
-func GetAddress(c *gin.Context) {
+func GetAddress(c *gin.Context, cfg *config.Config) {
 	path := c.Param("key")
 	ctx := c.Request.Context()
-	link, found := shortener.GetLink(ctx, path)
+	link, found := shortener.GetLink(ctx, cfg, path)
 	if found {
 		c.Redirect(http.StatusTemporaryRedirect, link)
 	} else {
@@ -27,7 +28,7 @@ func GetAddress(c *gin.Context) {
 	}
 }
 
-func GetAddressFromUser(c *gin.Context) {
+func GetAddressFromUser(c *gin.Context, cfg *config.Config) {
 	claims, exist := c.Get("user")
 	if !exist {
 		c.JSON(http.StatusUnauthorized, "You are not authorized")
@@ -42,7 +43,7 @@ func GetAddressFromUser(c *gin.Context) {
 
 	ctx := c.Request.Context()
 
-	result, err := config.Cfg.Store.GetLinksByUserID(ctx, userClaims.UserID)
+	result, err := cfg.Store.GetLinksByUserID(ctx, userClaims.UserID)
 	if err != nil {
 		if errors.Is(err, storage.ErrUserNotFound) {
 			c.JSON(http.StatusNoContent, []userURL{})
@@ -59,7 +60,7 @@ func GetAddressFromUser(c *gin.Context) {
 
 	response := make([]userURL, 0, len(result))
 	for key, value := range result {
-		response = append(response, userURL{ShortenURL: config.Cfg.FlagBaseURL + key, OriginalURL: value})
+		response = append(response, userURL{ShortenURL: cfg.FlagBaseURL + key, OriginalURL: value})
 	}
 
 	c.JSON(http.StatusOK, response)

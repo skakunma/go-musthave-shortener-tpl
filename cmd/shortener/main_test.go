@@ -2,32 +2,33 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"regexp"
 	"testing"
+	"time"
 
-	"go.uber.org/zap"
-
-	"GoIncrease1/internal/config"
-	"GoIncrease1/internal/handlers"
-	"GoIncrease1/internal/storage"
+	"github.com/skakunma/go-musthave-shortener-tpl/internal/config"
+	"github.com/skakunma/go-musthave-shortener-tpl/internal/handlers"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestPostAddress(t *testing.T) {
-	config.Cfg = config.NewConfig()
-	config.Cfg.FlagPathToSave = "default.txt"
-	config.Cfg.File, _ = os.OpenFile(config.Cfg.FlagPathToSave, os.O_CREATE|os.O_RDWR, 0644)
-	config.Cfg.FlagBaseURL = "http://localhost:8080/"
-	config.Cfg.Store = storage.NewLinkStorage()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	conf, err := config.LoadConfig(ctx)
+	if err != nil {
+		panic(err)
+	}
+
 	r := gin.Default()
-	handlers.SetupRoutes(r)
+	handlers.SetupRoutes(r, conf)
 
 	tests := []struct {
 		name    string
@@ -61,14 +62,16 @@ func TestPostAddress(t *testing.T) {
 }
 
 func TestGetAddress(t *testing.T) {
-	config.Cfg = config.NewConfig()
-	config.Cfg.FlagPathToSave = "default.txt"
-	config.Cfg.File, _ = os.OpenFile(config.Cfg.FlagPathToSave, os.O_CREATE|os.O_RDWR, 0644)
-	config.Cfg.FlagBaseURL = "http://localhost:8080/"
-	config.Cfg.Store = storage.NewLinkStorage()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	conf, err := config.LoadConfig(ctx)
+	if err != nil {
+		panic(err)
+	}
+
 	r := gin.Default()
-	handlers.SetupRoutes(r)
-	// Создание сокращенной ссылки
+	handlers.SetupRoutes(r, conf)
 	postReq := httptest.NewRequest(http.MethodPost, "/", bytes.NewBufferString("https://google.com"))
 	postReq.Header.Set("Content-Type", "text/plain")
 	postRecorder := httptest.NewRecorder()
@@ -77,7 +80,7 @@ func TestGetAddress(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, postRecorder.Code)
 
 	createdLink := postRecorder.Body.String()
-	shortKey := createdLink[len(config.Cfg.FlagBaseURL):]
+	shortKey := createdLink[len(conf.FlagBaseURL):]
 
 	// Проверка редиректа
 	getReq := httptest.NewRequest(http.MethodGet, "/"+shortKey, nil)
@@ -89,12 +92,16 @@ func TestGetAddress(t *testing.T) {
 }
 
 func TestGetAddressNotFound(t *testing.T) {
-	config.Cfg = config.NewConfig()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
-	config.Cfg.Store = storage.NewLinkStorage()
+	conf, err := config.LoadConfig(ctx)
+	if err != nil {
+		panic(err)
+	}
+
 	r := gin.Default()
-	handlers.SetupRoutes(r)
-
+	handlers.SetupRoutes(r, conf)
 	getReq := httptest.NewRequest(http.MethodGet, "/nonexistentkey", nil)
 	getRecorder := httptest.NewRecorder()
 	r.ServeHTTP(getRecorder, getReq)
@@ -103,21 +110,16 @@ func TestGetAddressNotFound(t *testing.T) {
 }
 
 func TestAddIddresJSON(t *testing.T) {
-	config.Cfg = config.NewConfig()
-	config.Cfg.FlagPathToSave = "default.txt"
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
-	config.Cfg.File, _ = os.OpenFile(config.Cfg.FlagPathToSave, os.O_CREATE|os.O_RDWR, 0644)
-	defer config.Cfg.File.Close()
-	config.Cfg.FlagBaseURL = "http://localhost:8080/"
-	config.Cfg.Store = storage.NewLinkStorage()
-	r := gin.Default()
-	handlers.SetupRoutes(r)
-	logger, err := zap.NewDevelopment()
+	conf, err := config.LoadConfig(ctx)
 	if err != nil {
 		panic(err)
 	}
-	config.Cfg.Sugar = logger.Sugar()
 
+	r := gin.Default()
+	handlers.SetupRoutes(r, conf)
 	tests := []struct {
 		name        string
 		contentType string
@@ -182,23 +184,16 @@ func TestAddIddresJSON(t *testing.T) {
 }
 
 func TestBath(t *testing.T) {
-	config.Cfg = config.NewConfig()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
-	file, err := os.OpenFile(config.Cfg.FlagPathToSave, os.O_CREATE|os.O_RDWR, 0644)
-	if err != nil {
-		return
-	}
-	defer file.Close()
-	config.Cfg.FlagBaseURL = "http://localhost:8080/"
-	config.Cfg.FlagForDB = "host=localhost user=postgres password=example dbname=postgres sslmode=disable"
-	config.Cfg.Store = storage.NewLinkStorage()
-	r := gin.Default()
-	handlers.SetupRoutes(r)
-	logger, err := zap.NewDevelopment()
+	conf, err := config.LoadConfig(ctx)
 	if err != nil {
 		panic(err)
 	}
-	config.Cfg.Sugar = logger.Sugar()
+
+	r := gin.Default()
+	handlers.SetupRoutes(r, conf)
 	tests := []struct {
 		name        string
 		contentType string

@@ -1,0 +1,38 @@
+package config
+
+import (
+	"flag"
+	"os"
+	"strings"
+)
+
+func ParseFlags(cfg *Config) {
+	// Создаем новый набор флагов
+	fs := flag.NewFlagSet("config", flag.ContinueOnError)
+
+	fs.StringVar(&cfg.FlagRunAddr, "a", ":8080", "address and port to run server")
+	fs.StringVar(&cfg.FlagBaseURL, "b", "http://localhost:8080/", "base URL for shortened links")
+	fs.StringVar(&cfg.FlagPathToSave, "f", "default.txt", "Path to save urls JSON")
+	fs.StringVar(&cfg.FlagForDB, "d", "", "PostgreSQL connection string")
+
+	// Разбираем флаги
+	flag.Parse()
+	// Перезаписываем значениями из переменных окружения (если они есть)
+	if envRunAddr := os.Getenv("SERVER_ADDRESS"); envRunAddr != "" {
+		cfg.FlagRunAddr = envRunAddr
+	}
+	if envBaseURL := os.Getenv("BASE_URL"); envBaseURL != "" {
+		cfg.FlagBaseURL = envBaseURL
+	}
+	if envPathToSave := os.Getenv("FILE_STORAGE_PATH"); envPathToSave != "" {
+		cfg.FlagPathToSave = envPathToSave
+	}
+	if envDBtoSave := os.Getenv("DATABASE_DSN"); envDBtoSave != "" {
+		cfg.FlagForDB = envDBtoSave
+	}
+
+	// Убеждаемся, что BaseURL всегда заканчивается на "/"
+	if !strings.HasSuffix(cfg.FlagBaseURL, "/") {
+		cfg.FlagBaseURL += "/"
+	}
+}

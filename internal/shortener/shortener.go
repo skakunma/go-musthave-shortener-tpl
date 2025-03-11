@@ -1,14 +1,14 @@
 package shortener
 
 import (
-	"GoIncrease1/internal/config"
-	"GoIncrease1/internal/storage"
 	"context"
 
 	"encoding/json"
 	"errors"
 	"math/rand"
 	"strings"
+
+	"github.com/skakunma/go-musthave-shortener-tpl/internal/config"
 )
 
 var ErrURLAlreadyExists = errors.New("URL уже существует в базе данных")
@@ -22,8 +22,8 @@ type (
 	}
 )
 
-func (info *ShortenTextFile) SaveURLInfo() error {
-	encoder := json.NewEncoder(config.Cfg.File)
+func (info *ShortenTextFile) SaveURLInfo(cfg *config.Config) error {
+	encoder := json.NewEncoder(cfg.File)
 	err := encoder.Encode(info)
 	if err != nil {
 		return err
@@ -31,45 +31,45 @@ func (info *ShortenTextFile) SaveURLInfo() error {
 	return nil
 }
 
-func generateLink() string {
+func GenerateLink(cfg *config.Config) string {
 	var builder strings.Builder
-	builder.Grow(config.Cfg.CharsetLength)
+	builder.Grow(cfg.CharsetLength)
 
-	for i := 0; i < config.Cfg.CharsetLength; i++ {
-		indx := rand.Intn(len(config.Cfg.Charset) - 1)
-		builder.WriteByte(config.Cfg.Charset[indx])
+	for i := 0; i < cfg.CharsetLength; i++ {
+		indx := rand.Intn(len(cfg.Charset) - 1)
+		builder.WriteByte(cfg.Charset[indx])
 	}
 
 	return builder.String()
 }
-func AddLink(ctx context.Context, Link string, uuid string, UserID int) (string, error) {
-	config.Cfg.Mu.Lock()
-	defer config.Cfg.Mu.Unlock()
+func AddLink(ctx context.Context, cfg *config.Config, Link string, uuid string, UserID int) (string, error) {
+	cfg.Mu.Lock()
+	defer cfg.Mu.Unlock()
 
 	for {
-		randomLink := generateLink()
+		randomLink := GenerateLink(cfg)
 
-		if _, exist, _ := config.Cfg.Store.Get(ctx, randomLink); !exist {
-			shortenLink, err := config.Cfg.Store.Save(ctx, uuid, randomLink, Link, UserID)
+		if _, exist, _ := cfg.Store.Get(ctx, randomLink); !exist {
+			shortenLink, err := cfg.Store.Save(ctx, uuid, randomLink, Link, UserID)
 			if err != nil {
-				if errors.Is(err, storage.ErrURLAlreadyExists) {
-					return config.Cfg.FlagBaseURL + shortenLink, err
+				if errors.Is(err, ErrURLAlreadyExists) {
+					return cfg.FlagBaseURL + shortenLink, err
 				}
 				return "", err
 			}
 
 			url := ShortenTextFile{UUID: uuid, ShortURL: randomLink, OriginalURL: Link, UserID: UserID}
-			err = url.SaveURLInfo()
+			err = url.SaveURLInfo(cfg)
 			if err != nil {
 				return "", err
 			}
-			return config.Cfg.FlagBaseURL + shortenLink, nil
+			return cfg.FlagBaseURL + shortenLink, nil
 		}
 	}
 }
 
-func GetLink(ctx context.Context, key string) (string, bool) {
-	if value, exist, err := config.Cfg.Store.Get(ctx, key); exist && err == nil {
+func GetLink(ctx context.Context, cfg *config.Config, key string) (string, bool) {
+	if value, exist, err := cfg.Store.Get(ctx, key); exist && err == nil {
 		return value, true
 	}
 

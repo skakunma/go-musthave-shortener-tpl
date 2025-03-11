@@ -1,12 +1,13 @@
 package handlers
 
 import (
-	jwtAuth "GoIncrease1/internal/jwt"
-	"GoIncrease1/internal/shortener"
-	"bytes"
-	"encoding/json"
 	"net/http"
 	"strings"
+
+	"github.com/skakunma/go-musthave-shortener-tpl/internal/config"
+	jwtAuth "github.com/skakunma/go-musthave-shortener-tpl/internal/jwt"
+	"github.com/skakunma/go-musthave-shortener-tpl/internal/shortener"
+	"github.com/skakunma/go-musthave-shortener-tpl/internal/storage"
 
 	"github.com/gin-gonic/gin"
 )
@@ -14,6 +15,7 @@ import (
 type infoAboutURL struct {
 	CorrelationID string `json:"correlation_id"`
 	OriginalURL   string `json:"original_url"`
+	ShortLink     string
 }
 
 type infoAboutURLResponse struct {
@@ -21,44 +23,44 @@ type infoAboutURLResponse struct {
 	ShortLink     string `json:"short_url"`
 }
 
-func Batch(c *gin.Context) {
+func Batch(c *gin.Context, cfg *config.Config) {
 	if !strings.HasPrefix(c.Request.Header.Get("Content-Type"), "application/json") {
-		c.JSON(http.StatusBadRequest, "Content-Type must be application/json")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Content-Type must be application/json"})
 		return
 	}
 
-	var (
-		buf      bytes.Buffer
-		links    []infoAboutURL
-		response []infoAboutURLResponse
-	)
+	var links []storage.InfoAboutURL
+	if err := c.ShouldBindJSON(&links); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON"})
+		return
+	}
 
-	_, err := buf.ReadFrom(c.Request.Body)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, "Have info in body?")
-		return
-	}
-	err = json.Unmarshal(buf.Bytes(), &links)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, "JSON is not correctly")
-		return
-	}
 	ctx := c.Request.Context()
 	claims, exist := c.Get("user")
 	if !exist {
-		c.JSON(http.StatusUnauthorized, "You are not autorizate")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "You are not authorized"})
+		return
 	}
 	userClaims := claims.(*jwtAuth.Claims)
 
-	for _, link := range links {
-		shorten, err := shortener.AddLink(ctx, link.OriginalURL, link.CorrelationID, userClaims.UserID)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, "Problem service")
+	for i, link := range links {
+		if link.OriginalURL == "" || link.CorrelationID == "" {
+			c.JSON(http.StatusBadRequest, "JSON is not correctly")
 			return
 		}
+		links[i].ShortLink = shortener.GenerateLink(cfg)
+	}
+
+	_, err := cfg.Store.AddLinksBatch(ctx, links, userClaims.UserID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, "Problem service")
+		return
+	}
+	var response []infoAboutURLResponse
+	for _, link := range links {
 		response = append(response, infoAboutURLResponse{
 			CorrelationID: link.CorrelationID,
-			ShortLink:     shorten,
+			ShortLink:     cfg.FlagBaseURL + link.ShortLink,
 		})
 	}
 

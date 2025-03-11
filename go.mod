@@ -1,4 +1,4 @@
-module GoIncrease1
+module github.com/skakunma/go-musthave-shortener-tpl
 
 go 1.22.12
 

@@ -107,3 +107,13 @@ func (s *LinkStorage) GetLinksByUserID(ctx context.Context, userID int) (map[str
 	}
 	return result, nil
 }
+
+func (s *LinkStorage) AddLinksBatch(ctx context.Context, links []InfoAboutURL, userID int) ([]string, error) {
+	shortLinks := []string{}
+	for _, link := range links {
+		shortLink := link.ShortLink
+		s.links[shortLink] = link.OriginalURL
+		shortLinks = append(shortLinks, shortLink)
+	}
+	return shortLinks, nil
+}
