@@ -171,20 +171,33 @@ func (s *PostgresStorage) AddLinksBatch(ctx context.Context, links []InfoAboutUR
 
 	for i, link := range links {
 		shortLink := link.ShortLink
-
 		shortLinks = append(shortLinks, shortLink)
 
-		values = append(values, shortLink, link.OriginalURL, link.CorrelationID, userID)
+		values = append(values, link.CorrelationID, shortLink, link.OriginalURL, userID)
 		placeholders = append(placeholders, fmt.Sprintf("($%d, $%d, $%d, $%d)", i*4+1, i*4+2, i*4+3, i*4+4))
 	}
 
 	query := fmt.Sprintf(
-		"INSERT INTO links (short_link, original_url, correlation_id, user_id) VALUES %s",
+		"INSERT INTO urls (correlation_id, short_url, original_url, user_id) VALUES %s RETURNING short_url",
 		strings.Join(placeholders, ","),
 	)
 
-	_, err = tx.ExecContext(ctx, query, values...)
+	rows, err := tx.QueryContext(ctx, query, values...)
 	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []string
+	for rows.Next() {
+		var shortURL string
+		if err := rows.Scan(&shortURL); err != nil {
+			return nil, err
+		}
+		results = append(results, shortURL)
+	}
+
+	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
@@ -192,5 +205,5 @@ func (s *PostgresStorage) AddLinksBatch(ctx context.Context, links []InfoAboutUR
 		return nil, err
 	}
 
-	return shortLinks, nil
+	return results, nil
 }
