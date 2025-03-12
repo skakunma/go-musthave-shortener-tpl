@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/skakunma/go-musthave-shortener-tpl/internal/config"
+	"github.com/skakunma/go-musthave-shortener-tpl/internal/storage"
 )
 
 var ErrURLAlreadyExists = errors.New("URL уже существует в базе данных")
@@ -52,7 +53,7 @@ func AddLink(ctx context.Context, cfg *config.Config, Link string, uuid string, 
 		if _, exist, _ := cfg.Store.Get(ctx, randomLink); !exist {
 			shortenLink, err := cfg.Store.Save(ctx, uuid, randomLink, Link, UserID)
 			if err != nil {
-				if errors.Is(err, ErrURLAlreadyExists) {
+				if errors.Is(err, storage.ErrURLAlreadyExists) {
 					return cfg.FlagBaseURL + shortenLink, err
 				}
 				return "", err

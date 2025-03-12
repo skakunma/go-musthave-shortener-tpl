@@ -52,19 +52,15 @@ func AddAddress(c *gin.Context, cfg *config.Config) {
 	link, err := shortener.AddLink(ctx, cfg, parsedURL.String(), uuid, userClaims.UserID)
 	if err != nil {
 		if errors.Is(err, storage.ErrURLAlreadyExists) {
-			_, err = json.Marshal(Response{Result: link})
-			if err != nil {
-				cfg.Sugar.Infof("Error: %v", err)
-				c.JSON(http.StatusBadGateway, "Problem with service")
-				return
-			}
 			c.String(http.StatusConflict, link)
 			return
 		}
 		cfg.Sugar.Error(err)
+		c.String(http.StatusBadRequest, "Error with add Link to storage")
 		return
 	}
 	c.String(http.StatusCreated, link)
+
 }
 
 func AddAddressJSON(c *gin.Context, cfg *config.Config) {
