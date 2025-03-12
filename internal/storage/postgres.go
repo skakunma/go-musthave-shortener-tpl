@@ -167,11 +167,9 @@ func (s *PostgresStorage) AddLinksBatch(ctx context.Context, links []InfoAboutUR
 
 	values := []interface{}{}
 	placeholders := []string{}
-	shortLinks := []string{}
 
 	for i, link := range links {
 		shortLink := link.ShortLink
-		shortLinks = append(shortLinks, shortLink)
 
 		values = append(values, link.CorrelationID, shortLink, link.OriginalURL, userID)
 		placeholders = append(placeholders, fmt.Sprintf("($%d, $%d, $%d, $%d)", i*4+1, i*4+2, i*4+3, i*4+4))
