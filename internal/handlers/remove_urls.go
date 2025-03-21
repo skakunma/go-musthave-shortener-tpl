@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/skakunma/go-musthave-shortener-tpl/internal/config"
@@ -42,20 +41,12 @@ func deleteUrls(c *gin.Context, cfg *config.Config) {
 	}
 	ctx := c.Request.Context()
 
-	var wg sync.WaitGroup
-
 	for _, uuid := range linksUUID {
-		wg.Add(1)
-		go func(id string) {
-			defer wg.Done()
-			author, _ := cfg.Store.GetUserFromUUID(ctx, id)
-			if author == userID {
-				cfg.Store.DeleteURL(ctx, id)
-			}
-		}(uuid)
+		author, _ := cfg.Store.GetUserFromUUID(ctx, uuid)
+		if author == userID {
+			cfg.Store.DeleteURL(ctx, uuid)
+		}
+
+		c.JSON(http.StatusAccepted, gin.H{"message": "URLs deleted successfully"})
 	}
-
-	wg.Wait()
-
-	c.JSON(http.StatusAccepted, gin.H{"message": "URLs deleted successfully"})
 }
