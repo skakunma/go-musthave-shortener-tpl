@@ -71,7 +71,7 @@ func AddLink(ctx context.Context, cfg *config.Config, Link string, uuid string, 
 
 func GetLink(ctx context.Context, cfg *config.Config, key string) (string, bool, error) {
 	value, exist, err := cfg.Store.Get(ctx, key)
-	if !exist && err != nil {
+	if !exist || err != nil {
 		return "", false, err
 	}
 
