@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/skakunma/go-musthave-shortener-tpl/internal/config"
@@ -20,7 +21,12 @@ type userURL struct {
 func GetAddress(c *gin.Context, cfg *config.Config) {
 	path := c.Param("key")
 	ctx := c.Request.Context()
-	link, found := shortener.GetLink(ctx, cfg, path)
+	link, found, err := shortener.GetLink(ctx, cfg, path)
+	if errors.Is(err, storage.LinkIsDeleted) {
+		c.JSON(http.StatusGone, "Deleted")
+		return
+	}
+	fmt.Println(err)
 	if found {
 		c.Redirect(http.StatusTemporaryRedirect, link)
 	} else {

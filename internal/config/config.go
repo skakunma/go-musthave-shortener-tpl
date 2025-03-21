@@ -52,7 +52,7 @@ func LoadConfig(ctx context.Context) (*Config, error) {
 	} else {
 		cfg.Store = storage.NewLinkStorage()
 	}
-
+	fmt.Println(cfg.Store)
 	// Открываем файл для записи
 	cfg.File, err = os.OpenFile(cfg.FlagPathToSave, os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {

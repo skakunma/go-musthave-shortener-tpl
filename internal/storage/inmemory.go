@@ -117,3 +117,16 @@ func (s *LinkStorage) AddLinksBatch(ctx context.Context, links []InfoAboutURL, u
 	}
 	return shortLinks, nil
 }
+
+func (s *LinkStorage) DeleteURL(ctx context.Context, UUID string) error {
+	s.deletedLinks[UUID] = true
+	return nil
+}
+
+func (s *LinkStorage) GetUserFromUUID(ctx context.Context, UUID string) (int, error) {
+	id, exist := s.uuidUser[UUID]
+	if exist != true {
+		return 0, nil
+	}
+	return id, nil
+}

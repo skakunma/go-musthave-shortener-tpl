@@ -36,6 +36,7 @@ func (s *PostgresStorage) createSchema() error {
 		correlation_id TEXT UNIQUE NOT NULL,
 		short_url TEXT UNIQUE NOT NULL,
 		original_url TEXT UNIQUE NOT NULL,
+    	is_deleted BOOL NOT NULL,
 		user_id INT NOT NULL,
 		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 	);
@@ -48,11 +49,11 @@ func (s *PostgresStorage) Save(ctx context.Context, correlationID string, short 
 	var existingShortURL string
 
 	err := s.db.QueryRow(
-		`INSERT INTO urls (correlation_id, short_url, original_url, user_id) 
-         VALUES ($1, $2, $3, $4) 
+		`INSERT INTO urls (correlation_id, short_url, original_url, user_id, is_deleted) 
+         VALUES ($1, $2, $3, $4, $5) 
          ON CONFLICT (original_url) DO NOTHING 
          RETURNING short_url`,
-		correlationID, short, original, userID,
+		correlationID, short, original, userID, false,
 	).Scan(&existingShortURL)
 
 	// Если в `existingShortURL` пусто — значит, запись уже была, и нам нужно ее найти
@@ -72,8 +73,12 @@ func (s *PostgresStorage) Save(ctx context.Context, correlationID string, short 
 }
 
 func (s *PostgresStorage) Get(ctx context.Context, shortURL string) (string, bool, error) {
-	var originalURL string
-	err := s.db.QueryRowContext(ctx, "SELECT original_url FROM urls WHERE short_url=$1", shortURL).Scan(&originalURL)
+	var (
+		originalURL string
+		IsDeleted   bool
+	)
+	err := s.db.QueryRowContext(ctx, "SELECT original_url, is_deleted FROM urls WHERE short_url=$1", shortURL).
+		Scan(&originalURL, &IsDeleted)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return "", false, errors.New("url not found")
@@ -82,6 +87,9 @@ func (s *PostgresStorage) Get(ctx context.Context, shortURL string) (string, boo
 	}
 	if originalURL == "" {
 		return "", false, err
+	}
+	if IsDeleted {
+		return "", false, LinkIsDeleted
 	}
 	return originalURL, true, nil
 }
@@ -172,11 +180,11 @@ func (s *PostgresStorage) AddLinksBatch(ctx context.Context, links []InfoAboutUR
 		shortLink := link.ShortLink
 
 		values = append(values, link.CorrelationID, shortLink, link.OriginalURL, userID)
-		placeholders = append(placeholders, fmt.Sprintf("($%d, $%d, $%d, $%d)", i*4+1, i*4+2, i*4+3, i*4+4))
+		placeholders = append(placeholders, fmt.Sprintf("($%d, $%d, $%d, $%d, false)", i*4+1, i*4+2, i*4+3, i*4+4))
 	}
 
 	query := fmt.Sprintf(
-		"INSERT INTO urls (correlation_id, short_url, original_url, user_id) VALUES %s RETURNING short_url",
+		"INSERT INTO urls (correlation_id, short_url, original_url, user_id, is_deleted) VALUES %s RETURNING short_url",
 		strings.Join(placeholders, ","),
 	)
 
@@ -204,4 +212,23 @@ func (s *PostgresStorage) AddLinksBatch(ctx context.Context, links []InfoAboutUR
 	}
 
 	return results, nil
+}
+
+func (s *PostgresStorage) DeleteURL(ctx context.Context, UUID string) error {
+	_, err := s.db.QueryContext(ctx, "UPDATE urls SET is_deleted = true WHERE correlation_id = $1", UUID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *PostgresStorage) GetUserFromUUID(ctx context.Context, UUID string) (int, error) {
+	var userID int
+	row := s.db.QueryRowContext(ctx, "SELECT user_id FROM urls WHERE correlation_id = $1", UUID)
+	err := row.Scan(&userID)
+	if err != nil {
+		return 0, err
+	}
+	return userID, nil
+
 }
