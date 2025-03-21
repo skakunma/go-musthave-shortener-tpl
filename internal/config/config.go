@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/skakunma/go-musthave-shortener-tpl/internal/storage"
+
 	"go.uber.org/zap"
 )
 
@@ -69,7 +70,6 @@ func LoadConfig(ctx context.Context) (*Config, error) {
 		Charset:       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
 		CharsetLength: 7,
 	}
-	ParseFlags(cfg)
 
 	// Инициализация логгера
 	logger, err := zap.NewDevelopment()

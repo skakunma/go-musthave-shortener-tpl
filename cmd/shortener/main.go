@@ -18,6 +18,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	ParseFlags(cfg)
 	server := gin.Default()
 
 	handlers.SetupRoutes(server, cfg)
