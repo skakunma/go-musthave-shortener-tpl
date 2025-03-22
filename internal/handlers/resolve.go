@@ -22,7 +22,7 @@ func GetAddress(c *gin.Context, cfg *config.Config) {
 	path := c.Param("key")
 	ctx := c.Request.Context()
 	link, found, err := shortener.GetLink(ctx, cfg, path)
-	if errors.Is(err, storage.LinkIsDeleted) {
+	if errors.Is(err, storage.ErrLinkIsDeleted) {
 		c.JSON(http.StatusGone, "Deleted")
 		return
 	}

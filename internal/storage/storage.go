@@ -9,7 +9,7 @@ import (
 var (
 	ErrURLAlreadyExists = errors.New("URL уже существует в базе данных")
 	ErrUserNotFound     = errors.New("пользователь не найден")
-	LinkIsDeleted       = errors.New("Данная ссылка удалена")
+	ErrLinkIsDeleted    = errors.New("Данная ссылка удалена")
 )
 
 type InfoAboutURL struct {
