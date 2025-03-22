@@ -41,7 +41,6 @@ func LoadConfig(ctx context.Context) (*Config, error) {
 	}
 	cfg.Sugar = logger.Sugar()
 	ParseFlags(cfg)
-	// Выбираем хранилище (PostgreSQL или in-memory)
 	if cfg.FlagForDB != "" {
 		pgStorage, err := storage.NewPostgresStorage(cfg.FlagForDB)
 		if err != nil {
@@ -53,7 +52,6 @@ func LoadConfig(ctx context.Context) (*Config, error) {
 		cfg.Store = storage.NewLinkStorage()
 	}
 
-	// Открываем файл для записи
 	cfg.File, err = os.OpenFile(cfg.FlagPathToSave, os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
 		cfg.Sugar.Errorf("Ошибка открытия файла: %v", err)

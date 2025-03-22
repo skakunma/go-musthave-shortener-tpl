@@ -21,4 +21,5 @@ func SetupRoutes(router *gin.Engine, cfg *config.Config) {
 	router.GET("/ping", func(c *gin.Context) { StatusConnDB(c, cfg) })
 	router.POST("/api/shorten/batch", func(c *gin.Context) { Batch(c, cfg) })
 	router.GET("/api/user/urls", func(c *gin.Context) { GetAddressFromUser(c, cfg) })
+	router.DELETE("/api/user/urls", func(c *gin.Context) { deleteUrls(c, cfg) })
 }

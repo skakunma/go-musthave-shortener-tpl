@@ -30,7 +30,10 @@ func ParseFlags(cfg *Config) {
 		cfg.FlagForDB = envDBtoSave
 	}
 
-	// Убеждаемся, что BaseURL всегда заканчивается на "/"
+	if cfg.FlagPathToSave == "" {
+		cfg.FlagPathToSave = "default.txt"
+	}
+
 	if !strings.HasSuffix(cfg.FlagBaseURL, "/") {
 		cfg.FlagBaseURL += "/"
 	}
