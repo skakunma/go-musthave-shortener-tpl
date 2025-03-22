@@ -125,7 +125,7 @@ func (s *LinkStorage) DeleteURL(ctx context.Context, UUID string) error {
 
 func (s *LinkStorage) GetUserFromUUID(ctx context.Context, UUID string) (int, error) {
 	id, exist := s.uuidUser[UUID]
-	if exist != true {
+	if !exist {
 		return 0, nil
 	}
 	return id, nil

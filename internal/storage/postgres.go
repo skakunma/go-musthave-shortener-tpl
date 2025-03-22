@@ -89,7 +89,7 @@ func (s *PostgresStorage) Get(ctx context.Context, shortURL string) (string, boo
 		return "", false, err
 	}
 	if IsDeleted {
-		return "", false, LinkIsDeleted
+		return "", false, ErrLinkIsDeleted
 	}
 	return originalURL, true, nil
 }
