@@ -1,13 +1,15 @@
 package handlers
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
+
+	"encoding/hex"
 
 	"github.com/skakunma/go-musthave-shortener-tpl/internal/config"
 	jwtAuth "github.com/skakunma/go-musthave-shortener-tpl/internal/jwt"
@@ -23,6 +25,11 @@ type Request struct {
 
 type Response struct {
 	Result string `json:"result"`
+}
+
+func GenerateUUID(shorten string) string {
+	hash := sha256.Sum256([]byte(shorten))
+	return hex.EncodeToString(hash[:])
 }
 
 func AddAddress(c *gin.Context, cfg *config.Config) {
@@ -48,7 +55,7 @@ func AddAddress(c *gin.Context, cfg *config.Config) {
 	userClaims := claims.(*jwtAuth.Claims)
 
 	ctx := c.Request.Context()
-	uuid := strconv.Itoa(cfg.Store.Len(ctx) + 1)
+	uuid := GenerateUUID(parsedURL.String())
 	link, err := shortener.AddLink(ctx, cfg, parsedURL.String(), uuid, userClaims.UserID)
 	if err != nil {
 		if errors.Is(err, storage.ErrURLAlreadyExists) {
@@ -88,7 +95,7 @@ func AddAddressJSON(c *gin.Context, cfg *config.Config) {
 
 	ctx := c.Request.Context()
 
-	uuid := strconv.Itoa(cfg.Store.Len(ctx) + 1)
+	uuid := GenerateUUID(parsedURL.String())
 
 	link, err := shortener.AddLink(ctx, cfg, parsedURL.String(), uuid, userClaims.UserID)
 	if err != nil {
