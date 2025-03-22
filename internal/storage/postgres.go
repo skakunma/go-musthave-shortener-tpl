@@ -215,10 +215,20 @@ func (s *PostgresStorage) AddLinksBatch(ctx context.Context, links []InfoAboutUR
 }
 
 func (s *PostgresStorage) DeleteURL(ctx context.Context, UUID string) error {
-	_, err := s.db.QueryContext(ctx, "UPDATE urls SET is_deleted = true WHERE correlation_id = $1", UUID)
+	result, err := s.db.ExecContext(ctx, "UPDATE urls SET is_deleted = true WHERE correlation_id = $1", UUID)
 	if err != nil {
 		return err
 	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return errors.New("no URL found with the given UUID")
+	}
+
 	return nil
 }
 
