@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -40,13 +41,13 @@ func deleteUrls(c *gin.Context, cfg *config.Config) {
 		return
 	}
 	ctx := c.Request.Context()
-
+	fmt.Println(linksUUID)
 	for _, uuid := range linksUUID {
 		author, _ := cfg.Store.GetUserFromUUID(ctx, uuid)
 		if author == userID {
 			cfg.Store.DeleteURL(ctx, uuid)
 		}
 
-		c.JSON(http.StatusAccepted, gin.H{"message": "URLs deleted successfully"})
 	}
+	c.JSON(http.StatusAccepted, gin.H{"message": "URLs deleted successfully"})
 }

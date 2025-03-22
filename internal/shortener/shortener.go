@@ -43,7 +43,7 @@ func GenerateLink(cfg *config.Config) string {
 
 	return builder.String()
 }
-func AddLink(ctx context.Context, cfg *config.Config, Link string, uuid string, UserID int) (string, error) {
+func AddLink(ctx context.Context, cfg *config.Config, Link string, UserID int) (string, error) {
 	cfg.Mu.Lock()
 	defer cfg.Mu.Unlock()
 
@@ -51,7 +51,7 @@ func AddLink(ctx context.Context, cfg *config.Config, Link string, uuid string, 
 		randomLink := GenerateLink(cfg)
 
 		if _, exist, _ := cfg.Store.Get(ctx, randomLink); !exist {
-			shortenLink, err := cfg.Store.Save(ctx, uuid, randomLink, Link, UserID)
+			shortenLink, err := cfg.Store.Save(ctx, randomLink, randomLink, Link, UserID)
 			if err != nil {
 				if errors.Is(err, storage.ErrURLAlreadyExists) {
 					return cfg.FlagBaseURL + shortenLink, err
@@ -59,7 +59,7 @@ func AddLink(ctx context.Context, cfg *config.Config, Link string, uuid string, 
 				return "", err
 			}
 
-			url := ShortenTextFile{UUID: uuid, ShortURL: randomLink, OriginalURL: Link, UserID: UserID}
+			url := ShortenTextFile{UUID: randomLink, ShortURL: randomLink, OriginalURL: Link, UserID: UserID}
 			err = url.SaveURLInfo(cfg)
 			if err != nil {
 				return "", err

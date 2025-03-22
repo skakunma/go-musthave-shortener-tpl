@@ -11,7 +11,7 @@ func ParseFlags(cfg *Config) {
 	flag.StringVar(&cfg.FlagRunAddr, "a", ":8080", "address and port to run server")
 	flag.StringVar(&cfg.FlagBaseURL, "b", "http://localhost:8080", "base URL for shortened links")
 	flag.StringVar(&cfg.FlagPathToSave, "f", "default.txt", "Path to save urls JSON")
-	flag.StringVar(&cfg.FlagForDB, "d", "", "PostgreSQL connection string")
+	flag.StringVar(&cfg.FlagForDB, "d", "host=localhost user=postgres password=example dbname=postgres sslmode=disable", "PostgreSQL connection string")
 
 	// Разбираем флаги
 	flag.Parse()
