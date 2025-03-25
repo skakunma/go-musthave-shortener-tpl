@@ -13,7 +13,6 @@ func ParseFlags(cfg *Config) {
 	flag.StringVar(&cfg.FlagPathToSave, "f", "default.txt", "Path to save urls JSON")
 	flag.StringVar(&cfg.FlagForDB, "d", "", "PostgreSQL connection string")
 
-	// Разбираем флаги
 	flag.Parse()
 
 	// Перезаписываем значениями из переменных окружения (если они есть)
