@@ -77,7 +77,7 @@ func LoadConfig(ctx context.Context) (*Config, error) {
 		return nil, fmt.Errorf("ошибка инициализации логгера: %w", err)
 	}
 	cfg.Sugar = logger.Sugar()
-
+        ParseFlags(cfg)
 	// Выбираем хранилище (PostgreSQL или in-memory)
 	if cfg.FlagForDB != "" {
 		pgStorage, err := storage.NewPostgresStorage(cfg.FlagForDB)
