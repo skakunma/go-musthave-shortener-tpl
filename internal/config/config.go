@@ -1,12 +1,9 @@
 package config
 
 import (
-	"bufio"
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
 	"sync"
 
 	"github.com/skakunma/go-musthave-shortener-tpl/internal/storage"
@@ -17,12 +14,6 @@ import (
 var Cfg *Config
 
 type (
-	ShortenTextFile struct {
-		UUID        string `json:"uuid"`
-		ShortURL    string `json:"short_url"`
-		OriginalURL string `json:"original_url"`
-		UserID      int    `json:"user_id"`
-	}
 	Config struct {
 		Mu             sync.Mutex
 		Charset        string
@@ -34,36 +25,9 @@ type (
 		FlagPathToSave string
 		FlagForDB      string
 		Store          storage.Storage
+		DeleteQueue    chan string
 	}
 )
-
-func LoadLinksFromFile(ctx context.Context, cfg *Config) error {
-
-	file, err := os.Open(cfg.FlagPathToSave)
-	if err != nil {
-		return fmt.Errorf("не удалось открыть файл: %w", err)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		var link ShortenTextFile
-		err := json.Unmarshal(scanner.Bytes(), &link)
-		if err != nil {
-			return fmt.Errorf("ошибка парсинга JSON: %w", err)
-		}
-		uuid := strconv.Itoa(cfg.Store.Len(ctx) - 1)
-		userID := link.UserID
-
-		cfg.Store.Save(ctx, uuid, link.ShortURL, link.OriginalURL, userID)
-	}
-
-	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("ошибка чтения файла: %w", err)
-	}
-
-	return nil
-}
 
 func LoadConfig(ctx context.Context) (*Config, error) {
 	cfg := &Config{
@@ -77,7 +41,7 @@ func LoadConfig(ctx context.Context) (*Config, error) {
 		return nil, fmt.Errorf("ошибка инициализации логгера: %w", err)
 	}
 	cfg.Sugar = logger.Sugar()
-        ParseFlags(cfg)
+	ParseFlags(cfg)
 	// Выбираем хранилище (PostgreSQL или in-memory)
 	if cfg.FlagForDB != "" {
 		pgStorage, err := storage.NewPostgresStorage(cfg.FlagForDB)
@@ -90,15 +54,17 @@ func LoadConfig(ctx context.Context) (*Config, error) {
 		cfg.Store = storage.NewLinkStorage()
 	}
 
-	// Открываем файл для записи
 	cfg.File, err = os.OpenFile(cfg.FlagPathToSave, os.O_CREATE|os.O_RDWR, 0644)
+
 	if err != nil {
 		cfg.Sugar.Errorf("Ошибка открытия файла: %v", err)
 	}
 
-	if err := LoadLinksFromFile(ctx, cfg); err != nil {
+	if err := storage.LoadLinksFromFile(ctx, cfg.Store, cfg.FlagPathToSave); err != nil {
 		cfg.Sugar.Error("Ошибка загрузки ссылок:", err)
 	}
+
+	cfg.DeleteQueue = make(chan string)
 
 	return cfg, nil
 }
