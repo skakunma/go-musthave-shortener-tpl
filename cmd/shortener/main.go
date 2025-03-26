@@ -21,6 +21,7 @@ func main() {
 	server := gin.Default()
 
 	handlers.SetupRoutes(server, cfg)
+	handlers.StartDeleteWorker(cfg)
 
 	server.Run(cfg.FlagRunAddr)
 	cfg.File.Close()
