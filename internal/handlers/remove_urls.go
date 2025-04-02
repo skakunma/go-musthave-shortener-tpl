@@ -33,7 +33,7 @@ func StartDeleteWorker(cfg *config.Config) {
 			if len(batch) == 0 {
 				continue
 			}
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 			for id, uuid := range batch {
 				if err := cfg.Store.DeleteURL(ctx, uuid); err != nil {
 					cfg.Sugar.Error(fmt.Sprintf("Error deleting URL %s: %v", uuid, err))
