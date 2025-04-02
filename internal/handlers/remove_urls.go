@@ -34,13 +34,13 @@ func StartDeleteWorker(cfg *config.Config) {
 				continue
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
-			for id, uuid := range batch {
+			defer cancel()
+			for _, uuid := range batch {
 				if err := cfg.Store.DeleteURL(ctx, uuid); err != nil {
 					cfg.Sugar.Error(fmt.Sprintf("Error deleting URL %s: %v", uuid, err))
 				}
-				batch = append(batch[:id], batch[id+1:]...)
 			}
-			cancel()
+			batch = []string{}
 		}
 	}()
 }
