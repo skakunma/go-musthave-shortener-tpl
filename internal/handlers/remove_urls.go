@@ -41,7 +41,6 @@ func StartDeleteWorker(cfg *config.Config) {
 					cfg.Sugar.Error(fmt.Sprintf("Error deleting URL %s: %v", uuid, err))
 				}
 			}
-			batch = []string{}
 		}
 	}()
 }
