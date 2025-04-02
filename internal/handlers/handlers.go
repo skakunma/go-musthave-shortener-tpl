@@ -8,13 +8,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// SetupRoutes регистрирует маршруты в Gin
 func SetupRoutes(router *gin.Engine, cfg *config.Config) {
 	router.Use(middleware.WithLogging(cfg))
 	router.Use(middleware.GzipMiddleware())
 	router.Use(middleware.AuthMiddleware(cfg))
 
-	// Передаем cfg в обработчики
 	router.POST("/", func(c *gin.Context) { AddAddress(c, cfg) })
 	router.GET("/:key", func(c *gin.Context) { GetAddress(c, cfg) })
 	router.POST("/api/shorten", func(c *gin.Context) { AddAddressJSON(c, cfg) })
