@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 
 	"github.com/skakunma/go-musthave-shortener-tpl/internal/config"
@@ -48,8 +47,7 @@ func AddAddress(c *gin.Context, cfg *config.Config) {
 	userClaims := claims.(*jwtAuth.Claims)
 
 	ctx := c.Request.Context()
-	uuid := strconv.Itoa(cfg.Store.Len(ctx) + 1)
-	link, err := shortener.AddLink(ctx, cfg, parsedURL.String(), uuid, userClaims.UserID)
+	link, err := shortener.AddLink(ctx, cfg, parsedURL.String(), userClaims.UserID)
 	if err != nil {
 		if errors.Is(err, storage.ErrURLAlreadyExists) {
 			c.String(http.StatusConflict, link)
@@ -88,9 +86,7 @@ func AddAddressJSON(c *gin.Context, cfg *config.Config) {
 
 	ctx := c.Request.Context()
 
-	uuid := strconv.Itoa(cfg.Store.Len(ctx) + 1)
-
-	link, err := shortener.AddLink(ctx, cfg, parsedURL.String(), uuid, userClaims.UserID)
+	link, err := shortener.AddLink(ctx, cfg, parsedURL.String(), userClaims.UserID)
 	if err != nil {
 		if errors.Is(err, storage.ErrURLAlreadyExists) {
 			_, err = json.Marshal(Response{Result: link})

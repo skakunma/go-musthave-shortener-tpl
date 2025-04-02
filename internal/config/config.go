@@ -25,6 +25,7 @@ type (
 		FlagPathToSave string
 		FlagForDB      string
 		Store          storage.Storage
+		DeleteQueue    chan string
 	}
 )
 
@@ -53,8 +54,8 @@ func LoadConfig(ctx context.Context) (*Config, error) {
 		cfg.Store = storage.NewLinkStorage()
 	}
 
-	// Открываем файл для записи
 	cfg.File, err = os.OpenFile(cfg.FlagPathToSave, os.O_CREATE|os.O_RDWR, 0644)
+
 	if err != nil {
 		cfg.Sugar.Errorf("Ошибка открытия файла: %v", err)
 	}
@@ -62,6 +63,8 @@ func LoadConfig(ctx context.Context) (*Config, error) {
 	if err := storage.LoadLinksFromFile(ctx, cfg.Store, cfg.FlagPathToSave); err != nil {
 		cfg.Sugar.Error("Ошибка загрузки ссылок:", err)
 	}
+
+	cfg.DeleteQueue = make(chan string)
 
 	return cfg, nil
 }
