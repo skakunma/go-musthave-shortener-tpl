@@ -19,6 +19,7 @@ func StartDeleteWorker(cfg *config.Config) {
 	go func() {
 		ticker := time.NewTicker(10 * time.Second)
 		defer ticker.Stop()
+		defer close(cfg.DeleteQueue)
 		for range ticker.C {
 			var batch []string
 		Loop:
